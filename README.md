@@ -1,4 +1,10 @@
-👗 Fashion Trend Detection & AI Stylist System
+
+#👗 Fashion Trend Detection & AI Stylist System
+
+![Project Status](https://img.shields.io/badge/Status-Completed-success)
+![Python Version](https://img.shields.io/badge/Python-3.x-blue)
+![Library](https://img.shields.io/badge/Library-pandas%20%7C%20fastapi%20%7C%20sqlalchemy%20%7C%20sklearn--Learn-orange)
+
 
 Project Trend Setters is an end-to-end AI application designed to detect real-time fashion trends from social media and act as a personal AI Stylist. It leverages Computer Vision (ResNet-50) to understand clothing aesthetics and Machine Learning (K-Means) to identify emerging styles.
 
