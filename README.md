@@ -1,5 +1,4 @@
-
-👗 # Fashion Trend Detection & AI Stylist System
+ # Fashion Trend Detection & AI Stylist System 👗
 
 ![Project Status](https://img.shields.io/badge/Status-Completed-success)
 ![Python Version](https://img.shields.io/badge/Python-3.x-blue)
@@ -8,9 +7,9 @@
 
 Project Trend Setters is an end-to-end AI application designed to detect real-time fashion trends from social media and act as a personal AI Stylist. It leverages Computer Vision (ResNet-50) to understand clothing aesthetics and Machine Learning (K-Means) to identify emerging styles.
 
-✨ # Key Features
+ # Key Features ✨
 
-🧠 # AI & Computer Vision
+# AI & Computer Vision 🧠 
 
 Visual Similarity Search: Upload an image to find visually similar items in the database.
 
@@ -22,7 +21,7 @@ Trend Clustering: Automatically groups thousands of images into distinct "Trend 
 
 Hybrid Classification: Automatically categorizes items (Topwear, Footwear, etc.) using a combination of visual embeddings and hashtag heuristics.
 
-💻 # User Interface (PWA)
+# User Interface (PWA) 💻 
 
 Progressive Web App (PWA): Installable on mobile/desktop with offline capability.
 
@@ -32,7 +31,7 @@ Trend Deep Dive: Explore specific trend clusters interactively.
 
 Full Image Viewer: High-resolution zoom for details.
 
-🛡️ # Admin Dashboard
+ # Admin Dashboard 🛡️
 
 Social Media Scraper: Automated scraping for Pinterest to build the dataset.
 
@@ -42,7 +41,7 @@ AI Pipeline Control: Trigger feature extraction and trend detection scripts dire
 
 Analytics: Charts visualizing category distribution and trend growth over time.
 
-🛠️ # Tech Stack
+# Tech Stack 🛠️ 
 
 Backend: Python, FastAPI, Uvicorn, SQLAlchemy
 
@@ -54,7 +53,7 @@ Scraping: Selenium, BeautifulSoup4
 
 Frontend: HTML5, Bootstrap 5, Chart.js, Vanilla JS (Service Workers for PWA)
 
-🚀 # Installation & Setup
+ # Installation & Setup 🚀
 
 1. Clone the Repository
 
@@ -86,7 +85,7 @@ uvicorn main:app --reload
 
 Access the app at: http://localhost:8000
 
-📖 # Usage Guide
+# Usage Guide 📖 
 
 A. Admin Setup (First Run)
 
@@ -110,7 +109,7 @@ Get Recommendations: Click "Complete the Look", upload a photo of a shirt, and s
 
 Install App: Click the "Install App" button in the nav bar to install as a PWA.
 
-📂 # Project Structure
+ # Project Structure 📂
 
 ├── main.py                 # Core FastAPI backend & API endpoints
 
@@ -141,7 +140,7 @@ Install App: Click the "Install App" button in the nav bar to install as a PWA.
 └── requirements.txt        # Python dependencies
 
 
-🔮 # Future Roadmap
+# Future Roadmap 🔮 
 
 Integration with Object Detection (YOLO) for precise multi-item cropping.
 
