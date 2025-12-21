@@ -107,18 +107,31 @@ Install App: Click the "Install App" button in the nav bar to install as a PWA.
 📂 Project Structure
 
 ├── main.py                 # Core FastAPI backend & API endpoints
+
 ├── process_data.py         # AI Pipeline: Feature extraction & Classification
+
 ├── trend_detector.py       # ML Pipeline: K-Means Clustering
+
 ├── feature_extractor.py    # ResNet-50 Model definition
+
 ├── scraper.py              # Selenium Scraper logic
+
 ├── category_model.py       # Category prediction logic
+
 ├── fix_categories.py       # Database utility script
+
 ├── index.html              # User Frontend (PWA)
+
 ├── admin.html              # Admin Dashboard
+
 ├── dashboard.html          # Analytics View
+
 ├── gallery.html            # Image Management View
+
 ├── sw.js                   # Service Worker for PWA
+
 ├── manifest.json           # PWA Manifest
+
 └── requirements.txt        # Python dependencies
 
 
