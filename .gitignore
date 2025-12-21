@@ -1,0 +1,13 @@
+Python
+
+pycache/
+*.pyc
+*.pyo
+*.pyd
+.Python
+env/
+venv/
+.env
+
+backup/
+ 

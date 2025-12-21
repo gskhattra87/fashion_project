@@ -1,0 +1,447 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Fashion Trend & Recommendation System</title>
+    <!-- Bootstrap CSS -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <!-- FontAwesome -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <!-- Chart.js for Analytics -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <style>
+        :root {
+            --primary-color: #D83A56; /* Deep Pink */
+            --secondary-color: #FF6F61; /* Coral */
+            --light-bg: #fff0f0;
+            --dark-text: #2c3e50;
+        }
+        body {
+            background-color: #f8f9fa;
+            color: var(--dark-text);
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+        }
+        .trend-card img, .recommendation-item img { 
+            height: 250px; 
+            object-fit: cover; 
+            width: 100%; 
+            border-radius: 8px; 
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+            transition: transform 0.2s;
+        }
+        .trend-card:hover img, .recommendation-item:hover img {
+            transform: scale(1.02);
+        }
+        .hero-section { 
+            background: linear-gradient(135deg, var(--secondary-color), var(--primary-color)); 
+            color: white; 
+            padding: 80px 0; 
+            margin-bottom: 40px; 
+            border-radius: 0 0 20px 20px; 
+            box-shadow: 0 4px 15px rgba(216, 58, 86, 0.3);
+        }
+        .admin-panel-container { 
+            border: 2px dashed var(--primary-color); 
+            padding: 30px; 
+            background-color: var(--light-bg); 
+            /* Changed to display: none to hide by default */
+            display: none; 
+            margin-bottom: 40px; 
+            border-radius: 15px;
+        }
+        .nav-tabs .nav-link.active {
+            background-color: var(--primary-color) !important;
+            color: white !important;
+            border-color: var(--primary-color) !important;
+            font-weight: bold;
+        }
+        .nav-tabs .nav-link {
+            color: var(--primary-color);
+            border: 1px solid var(--primary-color);
+            margin-right: 5px;
+            border-radius: 8px 8px 0 0;
+            transition: all 0.2s;
+        }
+        .btn-danger, .btn-primary {
+            background-color: var(--primary-color);
+            border-color: var(--primary-color);
+            transition: all 0.3s;
+        }
+        .btn-danger:hover, .btn-primary:hover {
+            background-color: #B92D47; 
+            border-color: #B92D47;
+        }
+        .modal-header {
+            background-color: var(--primary-color) !important; 
+            color: white;
+        }
+    </style>
+</head>
+<body>
+
+    <!-- Navigation -->
+    <nav class="navbar navbar-expand-lg navbar-dark bg-dark sticky-top shadow-sm">
+        <div class="container">
+            <a class="navbar-brand fw-bold" href="#"><i class="fas fa-tshirt me-2"></i>FashionAI</a>
+            <button class="btn btn-outline-light btn-sm rounded-pill px-3" onclick="toggleAdmin()">
+                <i class="fas fa-cog me-1"></i> Admin Panel
+            </button>
+        </div>
+    </nav>
+
+    <!-- Hero Section -->
+    <header class="hero-section text-center">
+        <div class="container">
+            <h1 class="display-4 fw-bold">Project Trend Setters</h1>
+            <p class="lead mb-4">Discover Real-Time Fashion Trends & Get AI-Powered Outfit Recommendations</p>
+            <button class="btn btn-light btn-lg fw-bold shadow-lg text-danger" data-bs-toggle="modal" data-bs-target="#uploadModal">
+                <i class="fas fa-camera me-2"></i>Get Recommendations
+            </button>
+        </div>
+    </header>
+
+    <div class="container">
+        
+        <!-- ADMIN PANEL SECTION -->
+        <div id="adminSection" class="admin-panel-container">
+            <div class="d-flex justify-content-between align-items-center mb-4">
+                <h3 class="text-center m-0" style="color: var(--primary-color);">Admin Data Manager</h3>
+                <button class="btn btn-sm btn-outline-secondary" onclick="toggleAdmin()">Close</button>
+            </div>
+
+            <ul class="nav nav-tabs" id="adminTabs" role="tablist">
+                <li class="nav-item">
+                    <button class="nav-link active" id="scrape-tab" data-bs-toggle="tab" data-bs-target="#scrape-content" type="button">Social Media Scraping</button>
+                </li>
+                <li class="nav-item">
+                    <button class="nav-link" id="upload-tab" data-bs-toggle="tab" data-bs-target="#upload-content" type="button">External Data Upload</button>
+                </li>
+            </ul>
+
+            <div class="tab-content border border-top-0 p-4 bg-white rounded-bottom shadow-sm">
+                <!-- Tab 1: Scraping -->
+                <div class="tab-pane fade show active" id="scrape-content">
+                    <p class="text-muted">Scrape fresh fashion images from Pinterest or Instagram.</p>
+                    <div class="row g-3">
+                        <div class="col-md-4">
+                            <select id="sourceInput" class="form-select">
+                                <option value="pinterest">Pinterest</option>
+                                <option value="instagram">Instagram</option>
+                            </select>
+                        </div>
+                        <div class="col-md-4">
+                            <input type="text" id="hashtagInput" class="form-control" placeholder="Enter Hashtag (e.g., streetstyle)">
+                        </div>
+                        <div class="col-md-4">
+                            <input type="number" id="limitInput" class="form-control" value="50" min="1">
+                        </div>
+                        <div class="col-12">
+                            <button class="btn btn-danger w-100" onclick="startScraping()">Start Scraping</button>
+                        </div>
+                        <div class="col-12">
+                            <div class="alert alert-secondary py-2 mt-2" id="adminStatus">Status: Idle</div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Tab 2: External Upload -->
+                <div class="tab-pane fade" id="upload-content">
+                    <p class="text-muted">Upload bulk datasets (CSV/Excel). Must contain 'image_url' and 'hashtags'.</p>
+                    <form id="upload-form" enctype="multipart/form-data" class="row g-3">
+                        <div class="col-md-6">
+                            <input type="file" id="dataset_file" name="file" class="form-control" accept=".csv, .xlsx, .xls" required>
+                        </div>
+                        <div class="col-md-6">
+                            <input type="text" id="source_name" name="source_name" class="form-control" value="Kaggle Data">
+                        </div>
+                        <div class="col-12">
+                            <button type="submit" class="btn btn-primary w-100">Upload & Import Data</button>
+                        </div>
+                        <div class="col-12">
+                            <div class="alert alert-secondary py-2 mt-2" id="uploadStatus">Status: Ready.</div>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+        <!-- END ADMIN PANEL -->
+
+        <!-- ANALYTICS CHART SECTION (NEW) -->
+        <div class="card shadow-sm border-0 mb-5">
+            <div class="card-body">
+                <h4 class="card-title fw-bold text-secondary mb-3"><i class="fas fa-chart-area me-2"></i>Trend Growth Analytics</h4>
+                <p class="text-muted small">Visualizing the volume of items collected per trend cluster over time.</p>
+                <div style="height: 300px; position: relative;">
+                    <canvas id="trendChart"></canvas>
+                </div>
+            </div>
+        </div>
+
+        <!-- TRENDS VISUALIZATION DASHBOARD -->
+        <div class="d-flex align-items-center mb-3">
+            <h3 class="text-secondary fw-bold mb-0 flex-grow-1">
+                <i class="fas fa-images me-2"></i>Live Fashion Clusters
+            </h3>
+            <button class="btn btn-sm btn-outline-secondary" onclick="loadTrends()">
+                <i class="fas fa-sync-alt me-1"></i> Refresh
+            </button>
+        </div>
+        
+        <div class="row mt-3" id="trendsContainer">
+            <div class="col-12 text-center p-5">
+                <div class="spinner-border text-danger" role="status"></div>
+                <p class="text-muted mt-3">Connecting to AI Backend...</p>
+            </div>
+        </div>
+    </div>
+
+    <!-- RECOMMENDATION ENGINE MODAL -->
+    <div class="modal fade" id="uploadModal" tabindex="-1">
+        <div class="modal-dialog modal-lg modal-dialog-centered">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title"><i class="fas fa-magic me-2"></i>AI Outfit Recommender</h5>
+                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body p-4">
+                    <form id="recommendation-form">
+                        <div class="row g-3">
+                            <div class="col-md-8">
+                                <label class="form-label fw-bold">1. Upload Outfit</label>
+                                <input type="file" id="outfitFile" name="file" class="form-control" accept="image/*" required>
+                            </div>
+                            <div class="col-md-4">
+                                <label class="form-label fw-bold">2. Filter Results</label>
+                                <select id="genderFilter" class="form-select">
+                                    <option value="Unisex">Unisex / All</option>
+                                    <option value="Men">Men</option>
+                                    <option value="Women">Women</option>
+                                </select>
+                            </div>
+                            <div class="col-12">
+                                <button type="submit" class="btn btn-danger w-100 mt-2">Analyze Style & Find Matches</button>
+                            </div>
+                        </div>
+                    </form>
+                    <hr class="my-4">
+                    <div id="recommendationStatus" class="alert alert-light border py-2 text-center text-muted">Upload an image to start.</div>
+                    <div id="recommendationOutput" class="row mt-4 g-4" style="display: none;">
+                        <div class="col-md-4 text-center border-end">
+                            <h6 class="text-muted mb-3">Your Input</h6>
+                            <img id="uploadedPreview" src="" class="img-fluid rounded" style="max-height: 250px;">
+                        </div>
+                        <div class="col-md-8">
+                            <h6 id="detectedTrendTitle" class="fw-bold fs-5 mb-3" style="color: var(--primary-color);"></h6>
+                            <div id="recommendationList" class="row g-3"></div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const API_URL = "http://localhost:8000";
+        const AUTH_HEADER = 'Basic ' + btoa('admin:secret');
+        let trendChartInstance = null;
+
+        function toggleAdmin() {
+            const panel = document.getElementById('adminSection');
+            panel.style.display = panel.style.display === 'none' || panel.style.display === '' ? 'block' : 'none';
+        }
+        
+        function updateStatus(divId, message, type = 'secondary') {
+            const div = document.getElementById(divId);
+            div.className = `alert alert-${type} py-2 mt-2`;
+            div.innerHTML = message;
+        }
+
+        // --- CHART ANALYTICS ---
+        async function loadChart() {
+            try {
+                const response = await fetch(`${API_URL}/trends/timeline`);
+                const data = await response.json();
+                
+                const ctx = document.getElementById('trendChart').getContext('2d');
+                
+                // Process data for Chart.js
+                const datasets = [];
+                const colors = ['#D83A56', '#FF6F61', '#4b7bec', '#20bf6b', '#f7b731', '#8854d0'];
+                
+                // Collect all unique dates for labels
+                let allDates = new Set();
+                Object.values(data).forEach(items => items.forEach(i => allDates.add(i.date)));
+                const labels = Array.from(allDates).sort();
+
+                let colorIdx = 0;
+                for (const [trendName, points] of Object.entries(data)) {
+                    // Map counts to the sorted date labels, fill 0 if missing
+                    const dataPoints = labels.map(date => {
+                        const point = points.find(p => p.date === date);
+                        return point ? point.count : 0;
+                    });
+
+                    datasets.push({
+                        label: trendName,
+                        data: dataPoints,
+                        borderColor: colors[colorIdx % colors.length],
+                        backgroundColor: colors[colorIdx % colors.length],
+                        tension: 0.4,
+                        fill: false
+                    });
+                    colorIdx++;
+                }
+
+                if (trendChartInstance) trendChartInstance.destroy();
+
+                trendChartInstance = new Chart(ctx, {
+                    type: 'line',
+                    data: { labels: labels, datasets: datasets },
+                    options: {
+                        responsive: true,
+                        maintainAspectRatio: false,
+                        plugins: { legend: { position: 'bottom' } },
+                        scales: { y: { beginAtZero: true } }
+                    }
+                });
+
+            } catch (error) {
+                console.error("Chart Error:", error);
+            }
+        }
+
+        async function loadTrends() {
+            const container = document.getElementById('trendsContainer');
+            try {
+                const response = await fetch(`${API_URL}/trends`);
+                const items = await response.json();
+                
+                if(items.length === 0) {
+                    container.innerHTML = `<div class="col-12 text-center py-5"><p class="text-muted">No trends found yet.</p></div>`;
+                    return;
+                }
+
+                document.querySelector('.container h3').innerHTML = `<i class="fas fa-images me-2"></i>Live Fashion Clusters (${items.length})`;
+
+                container.innerHTML = items.map(item => `
+                    <div class="col-12 col-sm-6 col-md-4 col-lg-3 mb-4">
+                        <div class="card trend-card shadow-sm h-100 border-0 bg-white">
+                            <div class="position-relative">
+                                <img src="${item.url}" onerror="this.onerror=null; this.src='https://placehold.co/400x400/eeeeee/999999?text=Trend+${item.trend_id}';" alt="Trend ${item.trend_id}">
+                                <span class="position-absolute top-0 end-0 badge bg-danger m-2 shadow">${item.count} Items</span>
+                            </div>
+                            <div class="card-body p-3">
+                                <h6 class="card-title mb-1 text-primary fw-bold">Trend Cluster #${item.trend_id}</h6>
+                                <p class="card-text text-muted mb-0 small text-truncate">#${item.tag || 'uncategorized'}</p>
+                            </div>
+                        </div>
+                    </div>
+                `).join('');
+            } catch (error) {
+                container.innerHTML = `<div class="col-12 text-center py-5"><p class="text-danger">Backend Connection Failed</p></div>`;
+            }
+        }
+
+        async function startScraping() {
+            const tag = document.getElementById('hashtagInput').value || "fashion";
+            const limit = document.getElementById('limitInput').value || 50;
+            const source = document.getElementById('sourceInput').value;
+            
+            updateStatus('adminStatus', `Starting ${source} scraping...`, 'warning');
+            
+            try {
+                const params = new URLSearchParams({ hashtag: tag, limit: parseInt(limit), source: source });
+                const response = await fetch(`${API_URL}/admin/scrape?${params.toString()}`, {
+                    method: 'POST',
+                    headers: { 'Authorization': AUTH_HEADER }
+                });
+                
+                const data = await response.json();
+                if (response.ok) {
+                    updateStatus('adminStatus', `SUCCESS: ${data.message}`, 'success');
+                    setTimeout(() => { loadTrends(); loadChart(); }, 2000);
+                } else {
+                    updateStatus('adminStatus', `Error: ${JSON.stringify(data.detail)}`, 'danger');
+                }
+            } catch (error) {
+                updateStatus('adminStatus', "Network Error.", 'danger');
+            }
+        }
+
+        document.getElementById('upload-form').addEventListener('submit', async function(e) {
+            e.preventDefault();
+            updateStatus('uploadStatus', 'Uploading...', 'warning');
+            const formData = new FormData(this);
+            try {
+                const response = await fetch(`${API_URL}/admin/upload_dataset`, {
+                    method: 'POST', headers: { 'Authorization': AUTH_HEADER }, body: formData 
+                });
+                const data = await response.json();
+                if (response.ok) {
+                    updateStatus('uploadStatus', `SUCCESS: ${data.message}`, 'success');
+                    setTimeout(() => { loadTrends(); loadChart(); }, 2000);
+                } else {
+                    updateStatus('uploadStatus', `Error: ${JSON.stringify(data.detail)}`, 'danger');
+                }
+            } catch (error) {
+                updateStatus('uploadStatus', 'Network Error.', 'danger');
+            }
+        });
+
+        document.getElementById('recommendation-form').addEventListener('submit', async function(e) {
+            e.preventDefault();
+            const fileInput = document.getElementById('outfitFile');
+            const genderFilter = document.getElementById('genderFilter').value;
+            const outputDiv = document.getElementById('recommendationOutput');
+            const statusDiv = document.getElementById('recommendationStatus');
+
+            if (fileInput.files.length === 0) return;
+
+            outputDiv.style.display = 'none';
+            statusDiv.className = 'alert alert-warning py-2 text-center';
+            statusDiv.innerHTML = '<i class="fas fa-cog fa-spin me-2"></i>Analyzing...';
+            document.getElementById('uploadedPreview').src = URL.createObjectURL(fileInput.files[0]);
+
+            const formData = new FormData();
+            formData.append('file', fileInput.files[0]);
+            formData.append('gender', genderFilter); 
+            
+            try {
+                const response = await fetch(`${API_URL}/recommend`, { method: 'POST', body: formData });
+                const data = await response.json();
+
+                if (response.ok) {
+                    statusDiv.className = 'alert alert-success py-2 text-center';
+                    statusDiv.innerHTML = 'Analysis Complete!';
+                    document.getElementById('detectedTrendTitle').innerHTML = `<i class="fas fa-search-location me-2"></i>${data.detected_style}`;
+                    
+                    document.getElementById('recommendationList').innerHTML = data.recommendations.map(item => `
+                        <div class="col-4">
+                            <div class="card shadow-sm recommendation-item border-0 h-100">
+                                <div class="position-relative">
+                                    <img src="${item.url}" onerror="this.onerror=null; this.src='https://placehold.co/400x400/eeeeee/999999?text=Item';" class="card-img-top">
+                                    <span class="position-absolute bottom-0 start-50 translate-middle-x badge bg-success shadow mb-2">${item.confidence}</span>
+                                </div>
+                                <div class="card-body p-2 text-center">
+                                    <p class="card-text text-dark fw-bold mb-0 small text-truncate">${item.name}</p>
+                                </div>
+                            </div>
+                        </div>
+                    `).join('');
+                    outputDiv.style.display = 'flex';
+                } else {
+                    statusDiv.className = 'alert alert-danger py-2 text-center';
+                    statusDiv.innerHTML = `Error: ${JSON.stringify(data.detail)}`;
+                }
+            } catch (error) {
+                statusDiv.className = 'alert alert-danger py-2 text-center';
+                statusDiv.innerHTML = 'Network Error.';
+            }
+        });
+
+        window.onload = () => { loadTrends(); loadChart(); };
+    </script>
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+</body>
+</html>

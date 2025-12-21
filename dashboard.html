@@ -1,0 +1,288 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>FashionAI - Analytics Dashboard</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <style>
+        :root { --primary-color: #D83A56; --secondary-color: #FF6F61; }
+        body { background-color: #f4f6f9; font-family: 'Segoe UI', sans-serif; }
+        .stat-card { border: none; border-radius: 12px; box-shadow: 0 4px 15px rgba(0,0,0,0.05); transition: transform 0.2s; }
+        .stat-card:hover { transform: translateY(-5px); }
+        .icon-box { width: 50px; height: 50px; border-radius: 10px; display: flex; align-items: center; justify-content: center; font-size: 1.5rem; color: white; }
+        .chart-container { position: relative; height: 400px; width: 100%; }
+        .nav-link.active { background-color: var(--primary-color) !important; color: white !important; }
+    </style>
+</head>
+<body>
+    <!-- Unified Navigation -->
+    <nav class="navbar navbar-expand-lg navbar-dark bg-dark mb-4">
+        <div class="container">
+            <a class="navbar-brand fw-bold" href="index.html"><i class="fas fa-tshirt me-2"></i>FashionAI</a>
+            <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav">
+                <span class="navbar-toggler-icon"></span>
+            </button>
+            <div class="collapse navbar-collapse" id="navbarNav">
+                <ul class="navbar-nav ms-auto">
+                    <li class="nav-item"><a class="nav-link active" href="dashboard.html">Analytics</a></li>
+                    <li class="nav-item"><a class="nav-link" href="gallery.html">Gallery</a></li>
+                    <li class="nav-item"><a class="nav-link" href="admin.html">Admin Panel</a></li>
+                </ul>
+            </div>
+        </div>
+    </nav>
+
+    <div class="container">
+        <h2 class="mb-4 fw-bold text-secondary">System Analytics</h2>
+        
+        <!-- Stats Row (Dynamic) -->
+        <div class="row g-4 mb-5" id="statsRow">
+            <div class="col-12 text-center"><div class="spinner-border text-primary"></div></div>
+        </div>
+
+        <!-- Charts Row -->
+        <div class="row g-4">
+            
+            <!-- Trend Growth (Full Width) -->
+            <div class="col-12">
+                <div class="card stat-card p-4 shadow-sm">
+                    <div class="d-flex justify-content-between align-items-center mb-4">
+                        <div>
+                            <h5 class="card-title text-secondary fw-bold mb-1">Trend Growth Over Time</h5>
+                            <p class="text-muted small mb-0">Tracking volume of items per trend cluster</p>
+                        </div>
+                        <select id="trendSelector" class="form-select form-select-sm w-auto shadow-sm border-primary" onchange="updateChartFilter()">
+                            <option value="all">Show All Trends</option>
+                        </select>
+                    </div>
+                    <div class="chart-container" id="timelineChartContainer">
+                        <canvas id="timelineChart"></canvas>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Gender Distribution (Full Width) -->
+            <div class="col-12">
+                <div class="card stat-card p-4 shadow-sm">
+                    <h5 class="card-title text-secondary fw-bold mb-4">Category Distribution</h5>
+                    <div class="chart-container" id="genderChartContainer" style="height: 350px;">
+                        <canvas id="genderChart"></canvas>
+                    </div>
+                </div>
+            </div>
+            
+        </div>
+        <div class="mb-5"></div> <!-- Spacer -->
+    </div>
+
+    <script>
+        const API_URL = "http://localhost:8000";
+        
+        // Chart globals
+        let trendChartInstance = null;
+        let genderChartInstance = null;
+        let allTimelineDatasets = [];
+        let allTimelineLabels = [];
+
+        async function loadDashboard() {
+            // Display loading states
+            document.getElementById('timelineChartContainer').innerHTML = '<div class="text-center py-5"><div class="spinner-border text-primary"></div><p class="text-muted mt-2">Loading Timeline Data...</p></div>';
+            document.getElementById('genderChartContainer').innerHTML = '<div class="text-center py-5"><div class="spinner-border text-primary"></div><p class="text-muted mt-2">Loading Gender Data...</p></div>';
+
+            await Promise.all([loadStats(), loadTimelineChart()]).catch(err => {
+                console.error("Dashboard failed to load components:", err);
+            });
+        }
+
+        async function loadStats() {
+            try {
+                // Fetch Stats
+                const res = await fetch(`${API_URL}/stats/overview`);
+                
+                if (!res.ok) throw new Error(`API returned status ${res.status}`);
+                
+                const data = await res.json();
+                
+                const statsRow = document.getElementById('statsRow');
+                let statsHtml = '';
+
+                // Dynamic Category Stats (Loop through all available genders)
+                const genderColors = { 'Men': 'bg-info', 'Women': 'bg-warning', 'Unisex': 'bg-secondary', 'Boys': 'bg-danger', 'Girls': 'bg-danger' };
+                const genderIcons = { 'Men': 'male', 'Women': 'female', 'Unisex': 'genderless', 'Boys': 'child', 'Girls': 'child' };
+
+                // 1. Core System Stats
+                statsHtml += createStatCard('Total Images', data.total_images, 'images', 'bg-primary');
+                statsHtml += createStatCard('Active Trends', data.total_trends, 'layer-group', 'bg-success');
+                
+                for (const [gender, count] of Object.entries(data.gender_breakdown)) {
+                    const colorClass = genderColors[gender] || 'bg-dark';
+                    const iconClass = genderIcons[gender] || 'tag';
+                    statsHtml += createStatCard(`${gender} Items`, count, iconClass, colorClass);
+                }
+
+                statsRow.innerHTML = statsHtml;
+
+                // --- Render Gender Chart FIX ---
+                // Ensure a fresh canvas exists before rendering
+                const genderChartContainer = document.getElementById('genderChartContainer');
+                genderChartContainer.innerHTML = '<canvas id="genderChart"></canvas>';
+
+
+                // Render Gender Chart
+                const ctxGender = document.getElementById('genderChart').getContext('2d');
+                if (genderChartInstance) genderChartInstance.destroy();
+                genderChartInstance = new Chart(ctxGender, {
+                    type: 'bar',
+                    data: {
+                        labels: Object.keys(data.gender_breakdown),
+                        datasets: [{
+                            label: 'Items',
+                            data: Object.values(data.gender_breakdown),
+                            backgroundColor: ['#D83A56', '#FF6F61', '#4b7bec', '#a55eea', '#20bf6b', '#fed330']
+                        }]
+                    },
+                    options: { 
+                        responsive: true, 
+                        maintainAspectRatio: false,
+                        plugins: { legend: { display: false } }
+                    }
+                });
+
+            } catch (e) {
+                console.error("Stats Load Error (Check main.py):", e);
+                // Display error message
+                document.getElementById('statsRow').innerHTML = `<div class="col-12"><div class="alert alert-danger"><i class="fas fa-exclamation-triangle"></i> Error loading statistics. Is backend running? (${e.message})</div></div>`;
+            }
+        }
+
+        function createStatCard(title, value, icon, colorClass) {
+            return `
+                <div class="col-md-3 col-sm-6">
+                    <div class="card stat-card p-3 h-100">
+                        <div class="d-flex align-items-center">
+                            <div class="icon-box ${colorClass} me-3"><i class="fas fa-${icon}"></i></div>
+                            <div><h3 class="mb-0 fw-bold">${value}</h3><small class="text-muted">${title}</small></div>
+                        </div>
+                    </div>
+                </div>`;
+        }
+
+        async function loadTimelineChart() {
+            try {
+                // Fetch Timeline Data
+                const timeRes = await fetch(`${API_URL}/trends/timeline`);
+                if (!timeRes.ok) throw new Error('Failed to fetch timeline data');
+                const timeData = await timeRes.json();
+                
+                // Fetch Trend Names for better labels (e.g. "Trend 1: Denim")
+                let trendMap = {};
+                try {
+                    const trendsRes = await fetch(`${API_URL}/trends`);
+                    if (trendsRes.ok) {
+                        const trendsList = await trendsRes.json();
+                        trendsList.forEach(t => {
+                            // Ensure the key format matches the timeline data format
+                            trendMap[`Trend ${t.trend_id}`] = `Trend ${t.trend_id}: ${t.tag || 'Style'}`;
+                        });
+                    }
+                } catch (err) {
+                    console.warn("Could not fetch trend names, using IDs.", err);
+                }
+
+                // Process Data
+                let allDates = new Set();
+                Object.values(timeData).forEach(items => items.forEach(i => allDates.add(i.date)));
+                allTimelineLabels = Array.from(allDates).sort();
+                
+                const colors = ['#D83A56', '#4b7bec', '#20bf6b', '#f7b731', '#a55eea', '#eb3b5a', '#fa8231'];
+                let cIdx = 0;
+                allTimelineDatasets = [];
+                const dropdownOptions = [];
+
+                for (const [trendKey, points] of Object.entries(timeData)) {
+                    const dataPoints = allTimelineLabels.map(date => {
+                        const point = points.find(p => p.date === date);
+                        return point ? point.count : 0;
+                    });
+
+                    const labelName = trendMap[trendKey] || trendKey;
+                    
+                    dropdownOptions.push({ value: trendKey, text: labelName });
+
+                    allTimelineDatasets.push({
+                        label: labelName,
+                        trendKey: trendKey,
+                        data: dataPoints,
+                        borderColor: colors[cIdx++ % colors.length],
+                        backgroundColor: 'transparent',
+                        tension: 0.3,
+                        fill: false
+                    });
+                }
+
+                // Sort dropdown options A-Z
+                dropdownOptions.sort((a, b) => a.text.localeCompare(b.text));
+                
+                // --- Render Timeline Chart FIX ---
+                const timelineChartContainer = document.getElementById('timelineChartContainer');
+                timelineChartContainer.innerHTML = '<canvas id="timelineChart"></canvas>';
+
+
+                const selector = document.getElementById('trendSelector');
+                selector.innerHTML = '<option value="all">Show All Trends</option>';
+                dropdownOptions.forEach(opt => {
+                    const option = document.createElement('option');
+                    option.value = opt.value;
+                    option.innerText = opt.text;
+                    selector.appendChild(option);
+                });
+
+                renderTimelineChart(allTimelineDatasets);
+
+            } catch (e) {
+                console.error("Timeline Load Error:", e);
+                // Clear loading message and replace with an error/empty chart
+                document.getElementById('timelineChartContainer').innerHTML = '<div class="text-center py-5 text-danger"><i class="fas fa-exclamation-triangle"></i> Error loading chart data.</div>';
+            }
+        }
+
+        function renderTimelineChart(datasets) {
+            const ctx = document.getElementById('timelineChart').getContext('2d');
+            if (trendChartInstance) trendChartInstance.destroy();
+
+            trendChartInstance = new Chart(ctx, {
+                type: 'line',
+                data: { labels: allTimelineLabels, datasets: datasets },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    interaction: { mode: 'index', intersect: false },
+                    plugins: { 
+                        legend: { 
+                            display: datasets.length < 10, 
+                            position: 'bottom' 
+                        },
+                        tooltip: { mode: 'index', intersect: false }
+                    }, 
+                    scales: { y: { beginAtZero: true } }
+                }
+            });
+        }
+
+        function updateChartFilter() {
+            const selected = document.getElementById('trendSelector').value;
+            if (selected === 'all') {
+                renderTimelineChart(allTimelineDatasets);
+            } else {
+                const filtered = allTimelineDatasets.filter(ds => ds.trendKey === selected);
+                renderTimelineChart(filtered);
+            }
+        }
+
+        window.onload = loadDashboard;
+    </script>
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+</body>
+</html>

@@ -1,0 +1,18 @@
+for run website
+ uvicorn main:app --reload  
+
+for export huggyface dataset
+python export_hf_dataset.py
+
+for Process Data(ML pipeline) trends:
+python process_data.py
+python trend_detector.py
+
+after uoload csv file
+python process_data.py  in terminal. 
+
+USERNAME = admin
+PASSWORD = secret
+
+ResNet features to predict the category.
+

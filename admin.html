@@ -1,0 +1,827 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Admin Dashboard - Fashion Trend & Recommendation System</title>
+    <link rel="shortcut icon" href="https://cdn-icons-png.flaticon.com/32/3046/3046982.png">
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <style>
+        :root { --primary-color: #D83A56; --secondary-color: #FF6F61; --light-bg: #fff0f0; }
+        body { background-color: #f4f6f9; font-family: 'Segoe UI', sans-serif; }
+        .card { border: none; border-radius: 10px; box-shadow: 0 2px 10px rgba(0,0,0,0.05); }
+        .btn-primary { background-color: var(--primary-color); border: none; }
+        .btn-primary:hover { background-color: #B92D47; }
+        .nav-link.active { background-color: var(--primary-color) !important; color: white !important; border-radius: 8px; }
+        .nav-link { color: var(--dark-text); font-weight: 500; margin-bottom: 5px; }
+        .nav-link:hover { color: var(--primary-color); background-color: rgba(216, 58, 86, 0.1); border-radius: 8px; }
+        
+        /* Sidebar */
+        .sidebar-sticky { position: relative; top: 0; height: calc(100vh - 48px); padding-top: .5rem; overflow-x: hidden; overflow-y: auto; }
+        
+        /* Status Badge */
+        .status-badge { width: 10px; height: 10px; border-radius: 50%; display: inline-block; margin-right: 5px; }
+        .status-online { background-color: #2ecc71; box-shadow: 0 0 5px #2ecc71; }
+        .status-offline { background-color: #e74c3c; }
+
+        /* Login Overlay */
+        #loginOverlay {
+            position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+            background: linear-gradient(135deg, var(--secondary-color), var(--primary-color));
+            z-index: 9999; display: flex; justify-content: center; align-items: center;
+        }
+        .login-card { background: white; padding: 40px; border-radius: 15px; width: 100%; max-width: 400px; box-shadow: 0 10px 25px rgba(0,0,0,0.2); }
+
+        /* Chart & Gallery Utils */
+        .chart-container { position: relative; height: 350px; width: 100%; }
+        .table-image { width: 50px; height: 50px; object-fit: cover; border-radius: 4px; }
+        .gallery-actions .btn { padding: 0.25rem 0.5rem; font-size: 0.75rem; }
+        
+        /* Dashboard Stats Utils */
+        .stat-card { border: none; border-radius: 12px; box-shadow: 0 4px 15px rgba(0,0,0,0.05); transition: transform 0.2s; }
+        .stat-card:hover { transform: translateY(-5px); }
+        .icon-box { width: 50px; height: 50px; border-radius: 10px; display: flex; align-items: center; justify-content: center; font-size: 1.5rem; color: white; }
+    </style>
+</head>
+<body>
+    <!-- LOGIN OVERLAY -->
+    <div id="loginOverlay">
+        <div class="login-card text-center">
+            <div class="mb-4">
+                <i class="fas fa-user-shield fa-3x" style="color: var(--primary-color);"></i>
+            </div>
+            <h3 class="fw-bold mb-4">Admin Access</h3>
+            <form id="loginForm">
+                <div class="mb-3 text-start">
+                    <label class="form-label text-muted small fw-bold">USERNAME</label>
+                    <input type="text" id="username" class="form-control form-control-lg" placeholder="admin" required>
+                </div>
+                <div class="mb-4 text-start">
+                    <label class="form-label text-muted small fw-bold">PASSWORD</label>
+                    <input type="password" id="password" class="form-control form-control-lg" placeholder="••••••" required>
+                </div>
+                <button type="submit" class="btn btn-primary w-100 py-2 fw-bold rounded-pill">Enter Dashboard</button>
+                <p id="loginError" class="text-danger mt-3 small"></p>
+            </form>
+            <div class="mt-4 border-top pt-3">
+                <a href="index.html" class="text-secondary small text-decoration-none hover-link">
+                    <i class="fas fa-arrow-left me-1"></i> Return to Main Site
+                </a>
+            </div>
+        </div>
+    </div>
+
+    <!-- MAIN ADMIN INTERFACE -->
+    <div id="adminInterface" style="display: none;">
+        
+        <!-- Navbar -->
+        <nav class="navbar navbar-expand-lg navbar-dark bg-dark px-4 shadow-sm sticky-top">
+            <div class="container-fluid">
+                <a class="navbar-brand fw-bold" href="#"><i class="fas fa-tshirt me-2"></i>FT & RS Admin</a>
+                <div class="d-flex align-items-center">
+                    <div class="text-white me-4 small" id="systemStatus">
+                        <span class="status-badge status-offline" id="statusDot"></span> 
+                        <span id="statusText">Checking System...</span>
+                    </div>
+                    <button class="btn btn-outline-light btn-sm rounded-pill" onclick="logout()">
+                        <i class="fas fa-sign-out-alt me-1"></i> Logout
+                    </button>
+                </div>
+            </div>
+        </nav>
+
+        <div class="container-fluid">
+            <div class="row">
+                <!-- Sidebar Navigation -->
+                <nav id="sidebarMenu" class="col-md-3 col-lg-2 d-md-block bg-white sidebar collapse shadow-sm">
+                    <div class="position-sticky pt-3 sidebar-sticky">
+                        <ul class="nav flex-column nav-pills">
+                            <li class="nav-item">
+                                <a class="nav-link active" data-bs-toggle="pill" href="#dashboard-tab" onclick="loadStats()">
+                                    <i class="fas fa-tachometer-alt me-2"></i> Overview
+                                </a>
+                            </li>
+                            <li class="nav-item">
+                                <a class="nav-link" data-bs-toggle="pill" href="#analytics-tab" onclick="loadCharts()">
+                                    <i class="fas fa-chart-pie me-2"></i> Analytics
+                                </a>
+                            </li>
+                            <li class="nav-item">
+                                <a class="nav-link" data-bs-toggle="pill" href="#gallery-tab" onclick="fetchImages()">
+                                    <i class="fas fa-images me-2"></i> Gallery
+                                </a>
+                            </li>
+                            <li class="nav-item">
+                                <a class="nav-link" data-bs-toggle="pill" href="#scrape-tab">
+                                    <i class="fas fa-robot me-2"></i> Scraper
+                                </a>
+                            </li>
+                            <li class="nav-item">
+                                <a class="nav-link" data-bs-toggle="pill" href="#upload-tab">
+                                    <i class="fas fa-upload me-2"></i> Import Data
+                                </a>
+                            </li>
+                            <li class="nav-item">
+                                <a class="nav-link" data-bs-toggle="pill" href="#bulk-tab" onclick="loadUniqueTags()">
+                                    <i class="fas fa-wrench me-2"></i> Bulk Edit
+                                </a>
+                            </li>
+                            <li class="nav-item">
+                                <a class="nav-link" data-bs-toggle="pill" href="#pipeline-tab">
+                                    <i class="fas fa-layer-group me-2"></i> AI Pipeline
+                                </a>
+                            </li>
+                        </ul>
+                    </div>
+                </nav>
+
+                <!-- Main Content -->
+                <main class="col-md-9 ms-sm-auto col-lg-10 px-md-4 py-4">
+                    <div class="tab-content" id="adminTabContent">
+                        
+                        <!-- 1. DASHBOARD OVERVIEW -->
+                        <div class="tab-pane fade show active" id="dashboard-tab">
+                            <div class="d-flex justify-content-between flex-wrap flex-md-nowrap align-items-center pt-3 pb-2 mb-3 border-bottom">
+                                <h1 class="h2">Dashboard Overview</h1>
+                                <button class="btn btn-sm btn-outline-secondary" onclick="loadStats()">
+                                    <i class="fas fa-sync"></i> Refresh Data
+                                </button>
+                            </div>
+                            
+                            <!-- Stats Cards (Dynamic) -->
+                            <div class="row g-4 mb-4" id="statsRow">
+                                <div class="col-12 text-center"><div class="spinner-border text-primary"></div></div>
+                            </div>
+
+                            <!-- Activity Log (Client Side Session) -->
+                            <div class="card">
+                                <div class="card-header bg-white fw-bold">Session Activity Log</div>
+                                <div class="card-body">
+                                    <ul id="activityLog" class="list-group list-group-flush small text-muted">
+                                        <li class="list-group-item">Waiting for actions...</li>
+                                    </ul>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- 2. ANALYTICS (Charts) -->
+                        <div class="tab-pane fade" id="analytics-tab">
+                            <h2 class="h4 mb-4">System Analytics</h2>
+                            <div class="row g-4">
+                                <div class="col-md-6">
+                                    <div class="card p-4 h-100 shadow-sm">
+                                        <h5 class="card-title text-muted mb-4">Category Distribution</h5>
+                                        <div class="chart-container"><canvas id="genderChart"></canvas></div>
+                                    </div>
+                                </div>
+                                <div class="col-md-6">
+                                    <div class="card p-4 h-100 shadow-sm">
+                                        <div class="d-flex justify-content-between align-items-center mb-3">
+                                            <div>
+                                                <h5 class="card-title text-muted mb-0">Trend Growth Over Time</h5>
+                                                <p class="text-muted small mb-0">Track volume by cluster ID</p>
+                                            </div>
+                                            <select id="trendSelector" class="form-select form-select-sm w-auto shadow-sm border-primary" onchange="updateChartFilter()">
+                                                <option value="all">Show All Trends</option>
+                                            </select>
+                                        </div>
+                                        <div class="chart-container"><canvas id="timelineChart"></canvas></div>
+                                    </div>
+                                </div>
+                                
+                                <!-- NEW DATA SCIENCE SECTION: CLUSTERING ANALYSIS -->
+                                <div class="col-12">
+                                    <h5 class="mt-4 mb-3 fw-bold text-secondary">Clustering Quality Analysis</h5>
+                                </div>
+                                <div class="col-md-4">
+                                    <div class="card p-4 border-start border-4 border-warning h-100">
+                                        <div class="d-flex justify-content-between align-items-center">
+                                            <div>
+                                                <h6 class="text-muted">Avg Items per Cluster</h6>
+                                                <h2 class="fw-bold" id="avgClusterSize">-</h2>
+                                            </div>
+                                            <div class="icon-box bg-warning bg-opacity-25 text-warning"><i class="fas fa-balance-scale"></i></div>
+                                        </div>
+                                        <small class="text-muted mt-2 d-block">Indicates how evenly data is distributed.</small>
+                                    </div>
+                                </div>
+                                <div class="col-md-4">
+                                    <div class="card p-4 border-start border-4 border-danger h-100">
+                                        <div class="d-flex justify-content-between align-items-center">
+                                            <div>
+                                                <h6 class="text-muted">Cluster Imbalance (Std Dev)</h6>
+                                                <h2 class="fw-bold" id="stdDevCluster">-</h2>
+                                            </div>
+                                            <div class="icon-box bg-danger bg-opacity-25 text-danger"><i class="fas fa-chart-bar"></i></div>
+                                        </div>
+                                        <small class="text-muted mt-2 d-block">High values indicate skewed trends.</small>
+                                    </div>
+                                </div>
+                                <div class="col-md-4">
+                                    <div class="card p-4 border-start border-4 border-primary h-100">
+                                        <div class="d-flex justify-content-between align-items-center">
+                                            <div>
+                                                <h6 class="text-muted">Model Status</h6>
+                                                <h2 class="fw-bold text-success" id="modelStatus">Active</h2>
+                                            </div>
+                                            <div class="icon-box bg-primary bg-opacity-25 text-primary"><i class="fas fa-brain"></i></div>
+                                        </div>
+                                        <small class="text-muted mt-2 d-block">K-Means Clustering (k=50)</small>
+                                    </div>
+                                </div>
+
+                                <div class="col-12">
+                                    <div class="card p-4 shadow-sm">
+                                        <h5 class="card-title text-muted mb-4">Cluster Size Distribution</h5>
+                                        <p class="small text-muted">Visualizing the density of each trend cluster. Balanced bars indicate a healthy model; single high bars indicate outliers.</p>
+                                        <div class="chart-container" style="height: 300px;"><canvas id="clusterSizeChart"></canvas></div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- 3. GALLERY MANAGEMENT -->
+                        <div class="tab-pane fade" id="gallery-tab">
+                            <div class="d-flex justify-content-between align-items-center mb-3">
+                                <h2 class="h4">Data Curation Gallery</h2>
+                                <button class="btn btn-sm btn-outline-primary" onclick="fetchImages()">Refresh List</button>
+                            </div>
+                            
+                            <!-- Filters -->
+                            <div class="card p-3 mb-4 bg-light">
+                                <div class="row g-3">
+                                    <div class="col-md-3">
+                                        <select id="galleryGender" class="form-select form-select-sm" onchange="resetGallery()">
+                                            <option value="All">All Genders</option>
+                                            <option value="Men">Men</option><option value="Women">Women</option><option value="Unisex">Unisex</option>
+                                        </select>
+                                    </div>
+                                    <div class="col-md-5">
+                                        <input type="text" id="gallerySearch" class="form-control form-control-sm" placeholder="Search by tag..." onkeyup="if(event.key === 'Enter') resetGallery()">
+                                    </div>
+                                    <div class="col-md-2">
+                                        <button class="btn btn-primary btn-sm w-100" onclick="resetGallery()">Filter</button>
+                                    </div>
+                                    <div class="col-md-2 text-end small pt-1" id="pageIndicator">Page 1</div>
+                                </div>
+                            </div>
+
+                            <!-- Table -->
+                            <div class="card">
+                                <div class="table-responsive">
+                                    <table class="table table-hover align-middle mb-0">
+                                        <thead class="table-light"><tr><th>ID</th><th>Img</th><th>Tags</th><th>Category</th><th>Gender</th><th>Actions</th></tr></thead>
+                                        <tbody id="galleryBody"></tbody>
+                                    </table>
+                                </div>
+                            </div>
+                            <div class="text-center mt-3">
+                                <button id="loadMoreBtn" class="btn btn-sm btn-outline-secondary" onclick="loadMoreImages()">Load Next Page</button>
+                            </div>
+                        </div>
+
+                        <!-- 4. SOCIAL SCRAPER -->
+                        <div class="tab-pane fade" id="scrape-tab">
+                            <h2 class="h4 mb-4">Social Media Scraper</h2>
+                            <div class="card p-4">
+                                <div class="row g-3">
+                                    <div class="col-md-3">
+                                        <label class="form-label fw-bold">Platform</label>
+                                        <select id="sourceInput" class="form-select">
+                                            <option value="pinterest" selected>Pinterest</option>
+                                            <!-- <option value="reddit">Reddit</option>
+                                            <option value="instagram">Instagram</option> -->
+                                        </select>
+                                    </div>
+                                    <div class="col-md-4">
+                                        <label class="form-label fw-bold">Hashtag</label>
+                                        <input type="text" id="hashtagInput" class="form-control" placeholder="e.g. streetwear">
+                                    </div>
+                                    <div class="col-md-2">
+                                        <label class="form-label fw-bold">Limit</label>
+                                        <input type="number" id="limitInput" class="form-control" value="50">
+                                    </div>
+                                    <div class="col-md-3 d-flex align-items-end">
+                                        <button class="btn btn-success w-100" id="startScrapingBtn">
+                                            <i class="fas fa-play me-2"></i>Start Job
+                                        </button>
+                                    </div>
+                                </div>
+                                <div id="adminStatus" class="alert alert-light border mt-3 mb-0">
+                                    <i class="fas fa-info-circle me-2"></i>System Idle. Ready to scrape.
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- 5. DATA UPLOAD -->
+                        <div class="tab-pane fade" id="upload-tab">
+                            <h2 class="h4 mb-4">Bulk Data Import</h2>
+                            <div class="card p-4">
+                                <p class="text-muted small mb-3">Supports CSV or Excel. Required columns: <code>image_url</code>, <code>hashtags</code>.</p>
+                                <form id="upload-form" class="row g-3">
+                                    <div class="col-md-5">
+                                        <input type="file" id="dataset_file" name="file" class="form-control" required>
+                                    </div>
+                                    <div class="col-md-4">
+                                        <input type="text" name="source_name" class="form-control" value="Kaggle Import" placeholder="Source Tag">
+                                    </div>
+                                    <div class="col-md-3">
+                                        <button type="submit" class="btn btn-success w-100"><i class="fas fa-file-import me-2"></i>Import</button>
+                                    </div>
+                                </form>
+                                <div id="uploadStatus" class="alert alert-light border mt-3 mb-0">No file selected.</div>
+                            </div>
+                        </div>
+
+                        <!-- 6. BULK CORRECTION -->
+                        <div class="tab-pane fade" id="bulk-tab">
+                            <h2 class="h4 mb-4">Metadata Correction Tool</h2>
+                            <div class="card p-4">
+                                <h6 class="text-muted mb-3">Batch update items sharing a specific hashtag.</h6>
+                                <form id="bulk-update-form" class="row g-3">
+                                    <div class="col-md-5">
+                                        <label class="form-label small fw-bold">Target Hashtag</label>
+                                        <select id="oldHashtag" name="old_hashtag" class="form-select" required>
+                                            <option value="">-- Load Tags First --</option>
+                                        </select>
+                                    </div>
+                                    <div class="col-md-3">
+                                        <label class="form-label small fw-bold">New Category</label>
+                                        <select id="newCategory" name="new_category" class="form-select" required>
+                                            <option value="Topwear">Topwear</option><option value="Bottomwear">Bottomwear</option>
+                                            <option value="Footwear">Footwear</option><option value="Accessories">Accessories</option>
+                                            <option value="Unknown">Unknown</option>
+                                        </select>
+                                    </div>
+                                    <div class="col-md-2">
+                                        <label class="form-label small fw-bold">New Gender</label>
+                                        <select id="newGender" name="new_gender" class="form-select" required>
+                                            <option value="Men">Men</option><option value="Women">Women</option><option value="Unisex">Unisex</option>
+                                        </select>
+                                    </div>
+                                    <div class="col-md-2 d-flex align-items-end">
+                                        <button type="submit" class="btn btn-success w-100">Update</button>
+                                    </div>
+                                </form>
+                                <div id="bulkStatus" class="alert alert-light border mt-3 mb-0">Select a hashtag to begin.</div>
+                            </div>
+                        </div>
+
+                        <!-- 7. AI PIPELINE -->
+                        <div class="tab-pane fade" id="pipeline-tab">
+                            <h2 class="h4 mb-4">AI Processing Pipeline</h2>
+                            <div class="row g-4">
+                                <div class="col-md-6">
+                                    <div class="card h-100 p-4 border-start border-4 border-warning">
+                                        <h5 class="fw-bold"><i class="fas fa-brain me-2"></i>Feature Extraction</h5>
+                                        <p class="text-muted small">Downloads images, generates embeddings, and predicts categories.</p>
+                                        <button class="btn btn-outline-dark w-100 mt-auto" onclick="runPipelineScript('process_data')" id="processDataBtn">
+                                            Run process_data.py
+                                        </button>
+                                    </div>
+                                </div>
+                                <div class="col-md-6">
+                                    <div class="card h-100 p-4 border-start border-4 border-info">
+                                        <h5 class="fw-bold"><i class="fas fa-project-diagram me-2"></i>Trend Clustering</h5>
+                                        <p class="text-muted small">Groups processed items into visual trend clusters (K-Means).</p>
+                                        <button class="btn btn-outline-dark w-100 mt-auto" onclick="runPipelineScript('run_trends')" id="runTrendsBtn">
+                                            Run trend_detector.py
+                                        </button>
+                                    </div>
+                                </div>
+                                <div class="col-12">
+                                    <div id="pipelineStatus" class="alert alert-secondary">Pipeline Idle.</div>
+                                </div>
+                            </div>
+                        </div>
+                        
+                    </div>
+                </main>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Edit Modal for Gallery -->
+    <div class="modal fade" id="editModal" tabindex="-1">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header bg-primary text-white">
+                    <h5 class="modal-title">Edit Metadata</h5>
+                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <img id="modalImage" src="" class="img-fluid mb-3 rounded d-block mx-auto" style="max-height: 150px;">
+                    <form id="editForm">
+                        <input type="hidden" id="editId">
+                        <div class="mb-2">
+                            <label class="form-label small fw-bold">Hashtags</label>
+                            <input type="text" id="editHashtags" class="form-control">
+                        </div>
+                        <div class="row g-2">
+                            <div class="col-6">
+                                <label class="form-label small fw-bold">Category</label>
+                                <select id="editCategory" class="form-select">
+                                    <option>Topwear</option><option>Bottomwear</option><option>Footwear</option><option>Accessories</option><option>Unknown</option>
+                                </select>
+                            </div>
+                            <div class="col-6">
+                                <label class="form-label small fw-bold">Gender</label>
+                                <select id="editGender" class="form-select">
+                                    <option>Men</option><option>Women</option><option>Unisex</option>
+                                </select>
+                            </div>
+                        </div>
+                        <button type="submit" class="btn btn-primary w-100 mt-3">Save Changes</button>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <script>
+        const API_URL = "http://localhost:8000";
+        let authHeader = null;
+        let galleryPage = 1;
+        const galleryLimit = 15;
+        let genderChartInstance = null, timelineChartInstance = null, clusterSizeChartInstance = null;
+        let allTimelineDatasets = [], allTimelineLabels = [];
+
+        // --- AUTHENTICATION ---
+        document.getElementById('loginForm').addEventListener('submit', async function(e) {
+            e.preventDefault();
+            const u = document.getElementById('username').value;
+            const p = document.getElementById('password').value;
+            if(u !== 'admin' || p !== 'secret') {
+                document.getElementById('loginError').textContent = "Invalid credentials.";
+                return;
+            }
+            authHeader = 'Basic ' + btoa(u + ':' + p);
+            sessionStorage.setItem('auth', authHeader);
+            showAdminUI();
+        });
+
+        function showAdminUI() {
+            document.getElementById('loginOverlay').style.display = 'none';
+            document.getElementById('adminInterface').style.display = 'block';
+            checkSystemHealth();
+            loadStats();
+        }
+
+        function logout() {
+            sessionStorage.removeItem('auth');
+            location.reload();
+        }
+        
+        window.onload = function() {
+            const storedAuth = sessionStorage.getItem('auth');
+            if(storedAuth) { authHeader = storedAuth; showAdminUI(); }
+        };
+
+        // --- DASHBOARD OVERVIEW ---
+        async function checkSystemHealth() {
+            try {
+                const res = await fetch(`${API_URL}/stats/overview`);
+                if(res.ok) {
+                    document.getElementById('statusDot').className = 'status-badge status-online';
+                    document.getElementById('statusText').textContent = 'System Online';
+                } else throw new Error('API Error');
+            } catch(e) {
+                document.getElementById('statusDot').className = 'status-badge status-offline';
+                document.getElementById('statusText').textContent = 'Backend Offline';
+            }
+        }
+
+        function createStatCard(title, value, icon, colorClass) {
+            return `
+                <div class="col-md-3 col-sm-6">
+                    <div class="card stat-card p-3 h-100">
+                        <div class="d-flex align-items-center">
+                            <div class="icon-box ${colorClass} me-3"><i class="fas fa-${icon}"></i></div>
+                            <div><h3 class="mb-0 fw-bold">${value}</h3><small class="text-muted">${title}</small></div>
+                        </div>
+                    </div>
+                </div>`;
+        }
+
+        async function loadStats() {
+            try {
+                const res = await fetch(`${API_URL}/stats/overview`);
+                const data = await res.json();
+                
+                let statsHtml = '';
+                // 1. Core System Stats
+                statsHtml += createStatCard('Total Images', data.total_images, 'images', 'bg-primary');
+                statsHtml += createStatCard('Active Trends', data.total_trends, 'layer-group', 'bg-success');
+
+                // 2. Dynamic Category Stats
+                const genderColors = { 'Men': 'bg-info', 'Women': 'bg-warning', 'Unisex': 'bg-secondary', 'Boys': 'bg-danger', 'Girls': 'bg-danger' };
+                const genderIcons = { 'Men': 'male', 'Women': 'female', 'Unisex': 'genderless', 'Boys': 'child', 'Girls': 'child' };
+
+                for (const [gender, count] of Object.entries(data.gender_breakdown)) {
+                    const colorClass = genderColors[gender] || 'bg-dark';
+                    const iconClass = genderIcons[gender] || 'tag';
+                    statsHtml += createStatCard(`${gender} Items`, count, iconClass, colorClass);
+                }
+                
+                document.getElementById('statsRow').innerHTML = statsHtml;
+            } catch(e) { console.error("Stats error", e); }
+        }
+
+        // --- ANALYTICS (Charts) ---
+        async function loadCharts() {
+            try {
+                // Gender Chart
+                const resStats = await fetch(`${API_URL}/stats/overview`);
+                const statsData = await resStats.json();
+                const ctxGender = document.getElementById('genderChart').getContext('2d');
+                if (genderChartInstance) genderChartInstance.destroy();
+                genderChartInstance = new Chart(ctxGender, {
+                    type: 'doughnut',
+                    data: {
+                        labels: Object.keys(statsData.gender_breakdown),
+                        datasets: [{ 
+                            label: 'Items',
+                            data: Object.values(statsData.gender_breakdown), 
+                            backgroundColor: ['#D83A56', '#FF6F61', '#4b7bec', '#20bf6b', '#a55eea'] 
+                        }]
+                    }, options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false } } }
+                });
+
+                // Timeline Chart
+                const resTime = await fetch(`${API_URL}/trends/timeline`);
+                const timeData = await resTime.json();
+                
+                // Fetch Trend Names
+                const trendsRes = await fetch(`${API_URL}/trends`);
+                const trendsList = await trendsRes.json();
+                const trendMap = {};
+                trendsList.forEach(t => {
+                    trendMap[`Trend ${t.trend_id}`] = `Trend ${t.trend_id}: ${t.tag || 'Style'}`;
+                });
+
+                let allDates = new Set();
+                Object.values(timeData).forEach(items => items.forEach(i => allDates.add(i.date)));
+                allTimelineLabels = Array.from(allDates).sort();
+                
+                const colors = ['#D83A56', '#4b7bec', '#20bf6b', '#f7b731', '#a55eea'];
+                let cIdx = 0;
+                allTimelineDatasets = [];
+                const dropdownOptions = [];
+                
+                for(const [trendKey, points] of Object.entries(timeData)) {
+                    const dataPoints = allTimelineLabels.map(d => (points.find(p => p.date === d) || {}).count || 0);
+                    const labelName = trendMap[trendKey] || trendKey;
+                    
+                    dropdownOptions.push({ value: trendKey, text: labelName });
+                    
+                    allTimelineDatasets.push({
+                        label: labelName,
+                        trendKey: trendKey,
+                        data: dataPoints,
+                        borderColor: colors[cIdx++ % colors.length], fill: false, tension: 0.3
+                    });
+                }
+                
+                dropdownOptions.sort((a, b) => a.text.localeCompare(b.text));
+                const selector = document.getElementById('trendSelector');
+                selector.innerHTML = '<option value="all">Show All Trends</option>';
+                dropdownOptions.forEach(opt => {
+                    const option = document.createElement('option');
+                    option.value = opt.value;
+                    option.innerText = opt.text;
+                    selector.appendChild(option);
+                });
+                
+                renderTimelineChart(allTimelineDatasets);
+
+                // --- CLUSTERING QUALITY: Cluster Size Analysis Chart ---
+                if (trendsList && trendsList.length > 0) {
+                    const counts = trendsList.map(t => t.count);
+                    const avg = (counts.reduce((a, b) => a + b, 0) / counts.length).toFixed(1);
+                    const stdDev = Math.sqrt(counts.map(x => Math.pow(x - avg, 2)).reduce((a, b) => a + b) / counts.length).toFixed(1);
+                    
+                    document.getElementById('avgClusterSize').textContent = avg;
+                    document.getElementById('stdDevCluster').textContent = stdDev;
+
+                    // Cluster Size Bar Chart
+                    const ctxCluster = document.getElementById('clusterSizeChart').getContext('2d');
+                    if (clusterSizeChartInstance) clusterSizeChartInstance.destroy();
+                    clusterSizeChartInstance = new Chart(ctxCluster, {
+                        type: 'bar',
+                        data: {
+                            labels: trendsList.map(t => `Trend ${t.trend_id}`),
+                            datasets: [{
+                                label: 'Items per Cluster',
+                                data: counts,
+                                backgroundColor: '#20bf6b'
+                            }]
+                        },
+                        options: { responsive: true, maintainAspectRatio: false }
+                    });
+                }
+
+            } catch(e) { console.error("Charts error", e); }
+        }
+
+        function renderTimelineChart(datasets) {
+             const ctx = document.getElementById('timelineChart').getContext('2d');
+             if (timelineChartInstance) timelineChartInstance.destroy();
+             timelineChartInstance = new Chart(ctx, {
+                type: 'line',
+                data: { labels: allTimelineLabels, datasets: datasets },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: { legend: { display: datasets.length < 10, position: 'bottom' } },
+                    scales: { y: { beginAtZero: true } }
+                }
+             });
+        }
+        
+        function updateChartFilter() {
+            const selected = document.getElementById('trendSelector').value;
+            if (selected === 'all') renderTimelineChart(allTimelineDatasets);
+            else renderTimelineChart(allTimelineDatasets.filter(ds => ds.trendKey === selected));
+        }
+
+
+        // --- GALLERY MANAGEMENT ---
+        function resetGallery() { galleryPage = 1; fetchImages(); }
+        function loadMoreImages() { galleryPage++; fetchImages(true); }
+
+        async function fetchImages(append = false) {
+            const gender = document.getElementById('galleryGender').value;
+            const search = document.getElementById('gallerySearch').value;
+            const btn = document.getElementById('loadMoreBtn');
+            const tbody = document.getElementById('galleryBody');
+            
+            btn.innerHTML = 'Loading...';
+            try {
+                let url = `${API_URL}/images/list?page=${galleryPage}&limit=${galleryLimit}`;
+                if (gender !== 'All') url += `&gender=${gender}`;
+                if (search) url += `&search=${search}`;
+                
+                const res = await fetch(url);
+                const images = await res.json();
+                
+                if (!append) tbody.innerHTML = '';
+                
+                if(images.length === 0 && !append) {
+                    tbody.innerHTML = '<tr><td colspan="6" class="text-center py-3 text-muted">No images found.</td></tr>';
+                    btn.style.display = 'none';
+                } else {
+                    images.forEach(img => {
+                        const row = tbody.insertRow();
+                        row.id = `row-${img.id}`;
+                        const imgJson = JSON.stringify(img).replace(/"/g, '&quot;');
+                        row.innerHTML = `
+                            <td><small>${img.id}</small></td>
+                            <td><img src="${img.url}" class="table-image" onerror="this.src='https://placehold.co/50'"></td>
+                            <td><small class="d-block text-truncate" style="max-width:150px;">${img.tags}</small></td>
+                            <td><span class="badge bg-secondary">${img.category}</span></td>
+                            <td>${img.gender}</td>
+                            <td class="gallery-actions">
+                                <button class="btn btn-outline-primary btn-sm me-1" onclick='openEditModal(${imgJson})'><i class="fas fa-edit"></i></button>
+                                <button class="btn btn-outline-danger btn-sm" onclick="deleteImage(${img.id})"><i class="fas fa-trash"></i></button>
+                            </td>
+                        `;
+                    });
+                    btn.style.display = images.length === galleryLimit ? 'inline-block' : 'none';
+                    btn.innerText = 'Load More';
+                }
+                document.getElementById('pageIndicator').innerText = `Page ${galleryPage}`;
+            } catch(e) { console.error("Gallery error", e); }
+        }
+
+        async function deleteImage(id) {
+            if(!confirm("Delete this image?")) return;
+            try {
+                const res = await fetch(`${API_URL}/images/${id}`, { method: 'DELETE', headers: { 'Authorization': authHeader } });
+                if(res.ok) { document.getElementById(`row-${id}`).remove(); }
+                else alert("Delete failed");
+            } catch(e) { alert("Network error"); }
+        }
+
+        // Edit Modal
+        const editModal = new bootstrap.Modal(document.getElementById('editModal'));
+        function openEditModal(img) {
+            document.getElementById('editId').value = img.id;
+            document.getElementById('editHashtags').value = img.tags;
+            document.getElementById('editCategory').value = img.category;
+            document.getElementById('editGender').value = img.gender;
+            document.getElementById('modalImage').src = img.url;
+            editModal.show();
+        }
+        
+        document.getElementById('editForm').addEventListener('submit', async function(e) {
+            e.preventDefault();
+            const id = document.getElementById('editId').value;
+            const formData = new FormData();
+            formData.append('hashtags', document.getElementById('editHashtags').value);
+            formData.append('gender', document.getElementById('editGender').value);
+            formData.append('category', document.getElementById('editCategory').value);
+            
+            try {
+                const res = await fetch(`${API_URL}/images/${id}`, { method: 'PUT', headers: { 'Authorization': authHeader }, body: formData });
+                if(res.ok) { editModal.hide(); fetchImages(); } else alert("Update failed");
+            } catch(e) { alert("Network error"); }
+        });
+
+
+        // --- LOGGING & UTILS ---
+        
+        function logActivity(message) {
+            const list = document.getElementById('activityLog');
+            
+            // Fix: Remove the default "Waiting..." placeholder if it exists
+            if (list.children.length > 0 && list.children[0].textContent.includes("Waiting")) {
+                list.innerHTML = '';
+            }
+
+            const time = new Date().toLocaleTimeString();
+            const item = document.createElement('li');
+            item.className = 'list-group-item';
+            item.innerHTML = `<span class="badge bg-light text-dark me-2">${time}</span> ${message}`;
+            
+            list.prepend(item);
+            
+            // Keep history clean (max 5 items)
+            if(list.children.length > 5) list.lastElementChild.remove();
+        }
+
+        function showAdminUI() {
+            document.getElementById('loginOverlay').style.display = 'none';
+            document.getElementById('adminInterface').style.display = 'block';
+            
+            checkSystemHealth();
+            loadStats();
+            
+            // Trigger the first log entry to clear the "Waiting" message
+            logActivity("System Ready. Session started.");
+        }
+
+        function updateStatus(id, msg, type) {
+            const el = document.getElementById(id);
+            el.className = `alert alert-${type} mt-3 py-2 small`;
+            el.innerHTML = msg;
+        }
+
+        // --- SCRAPER, UPLOAD, BULK, PIPELINE (Same logic as before) ---
+        // Binding buttons to existing logic...
+        document.getElementById('startScrapingBtn').addEventListener('click', async function() {
+            const tag = document.getElementById('hashtagInput').value;
+            const limit = document.getElementById('limitInput').value;
+            const source = document.getElementById('sourceInput').value;
+            updateStatus('adminStatus', `Queuing ${source}...`, 'warning');
+            try {
+                const p = new URLSearchParams({ hashtag: tag, limit: limit, source: source });
+                const res = await fetch(`${API_URL}/admin/scrape?${p}`, { method: 'POST', headers: { 'Authorization': authHeader } });
+                const d = await res.json();
+                updateStatus('adminStatus', res.ok ? d.message : d.detail, res.ok ? 'success' : 'danger');
+                if(res.ok) logActivity(`Scraped ${tag}`);
+            } catch(e) { updateStatus('adminStatus', 'Error', 'danger'); }
+        });
+
+        document.getElementById('upload-form').addEventListener('submit', async function(e) {
+            e.preventDefault();
+            const fd = new FormData(this);
+            try {
+                const res = await fetch(`${API_URL}/admin/upload_dataset`, { method: 'POST', headers: { 'Authorization': authHeader }, body: fd });
+                const d = await res.json();
+                updateStatus('uploadStatus', res.ok ? d.message : d.detail, res.ok ? 'success' : 'danger');
+            } catch(e) { updateStatus('uploadStatus', 'Error', 'danger'); }
+        });
+
+        async function loadUniqueTags() {
+             try {
+                const res = await fetch(`${API_URL}/tags/unique`, { headers: { 'Authorization': authHeader } });
+                const tags = await res.json();
+                const sel = document.getElementById('oldHashtag');
+                sel.innerHTML = '<option value="">-- Select --</option>';
+                tags.forEach(t => { sel.innerHTML += `<option value="${t}">${t}</option>` });
+             } catch(e) {}
+        }
+        
+        document.getElementById('bulk-update-form').addEventListener('submit', async function(e) {
+            e.preventDefault();
+            const fd = new FormData(this);
+            try {
+                const res = await fetch(`${API_URL}/admin/bulk_update`, { method: 'PUT', headers: { 'Authorization': authHeader }, body: fd });
+                const d = await res.json();
+                updateStatus('bulkStatus', res.ok ? d.message : d.detail, res.ok ? 'success' : 'danger');
+            } catch(e) { updateStatus('bulkStatus', 'Error', 'danger'); }
+        });
+
+        async function runPipelineScript(endpoint) {
+            try {
+                const res = await fetch(`${API_URL}/admin/${endpoint}`, { method: 'POST', headers: { 'Authorization': authHeader } });
+                const d = await res.json();
+                document.getElementById('pipelineStatus').className = d.success ? 'alert alert-success' : 'alert alert-danger';
+                document.getElementById('pipelineStatus').textContent = d.success ? 'Success' : 'Failed: ' + d.error;
+            } catch(e) { alert("Error"); }
+        }
+    </script>
+</body>
+</html>

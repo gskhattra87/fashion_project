@@ -1,0 +1,22 @@
+# General Web Framework
+fastapi
+uvicorn
+
+# Database
+sqlalchemy
+pymysql
+
+# Image Processing & Feature Extraction
+Pillow
+requests
+numpy
+torch
+torchvision
+
+# Machine Learning & Clustering
+scikit-learn
+tqdm
+scipy
+
+# Instagram Scraper (NEW)
+instaloader

@@ -1,0 +1,883 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Fashion Trend & Recommendation System</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        :root {
+            --primary-color: #D83A56;
+            --secondary-color: #FF6F61;
+            --dark-text: #2c3e50;
+            --light-bg: #f8f9fa;
+            --card-shadow: 0 4px 6px rgba(0,0,0,0.05);
+            --card-hover-shadow: 0 10px 20px rgba(0,0,0,0.1);
+        }
+        body { background-color: var(--light-bg); color: var(--dark-text); font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; }
+        
+        /* Navigation */
+        .navbar { box-shadow: 0 2px 4px rgba(0,0,0,0.1); }
+        .navbar-brand { font-size: 1.5rem; letter-spacing: 0.5px; }
+        
+        /* Hero Section */
+        .hero-section { 
+            background: linear-gradient(135deg, var(--secondary-color), var(--primary-color)); 
+            color: white; 
+            padding: 100px 0; 
+            margin-bottom: 50px; 
+            border-radius: 0 0 50px 50px; 
+            box-shadow: 0 10px 30px rgba(216, 58, 86, 0.3); 
+            position: relative;
+            overflow: hidden;
+        }
+        .hero-section::before {
+            content: '';
+            position: absolute;
+            top: -50px;
+            left: -50px;
+            width: 200px;
+            height: 200px;
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 50%;
+            z-index: 0;
+        }
+        .hero-content { position: relative; z-index: 1; }
+        
+        /* Cards */
+        .trend-card, .recommendation-item, .wardrobe-item { 
+            border: none; 
+            border-radius: 15px; 
+            box-shadow: var(--card-shadow); 
+            transition: transform 0.3s ease, box-shadow 0.3s ease; 
+            overflow: hidden;
+            background: white;
+            position: relative;
+        }
+        .trend-card:hover, .recommendation-item:hover, .wardrobe-item:hover { 
+            transform: translateY(-8px); 
+            box-shadow: var(--card-hover-shadow); 
+        }
+        .trend-card img, .recommendation-item img, .wardrobe-item img { 
+            height: 280px; 
+            object-fit: cover; 
+            width: 100%; 
+            transition: transform 0.5s ease;
+        }
+        .trend-card:hover img, .recommendation-item:hover img, .wardrobe-item:hover img {
+            transform: scale(1.05);
+        }
+        
+        /* Heart Button Fix */
+        .btn-save { 
+            cursor: pointer; 
+            color: #999; /* Default Gray */
+            background: rgba(255,255,255,0.9); 
+            border: none; 
+            width: 40px; 
+            height: 40px; 
+            display: flex; 
+            align-items: center; 
+            justify-content: center; 
+            transition: all 0.2s ease;
+            z-index: 20; /* Ensure it stays above image */
+        }
+        .btn-save:hover { 
+            color: #dc3545; /* Red on hover */
+            background: white; 
+            transform: scale(1.1); 
+            box-shadow: 0 4px 8px rgba(0,0,0,0.2);
+        }
+        
+        /* Buttons */
+        .btn-danger { 
+            background-color: var(--primary-color); 
+            border-color: var(--primary-color); 
+            padding: 10px 25px;
+            border-radius: 30px;
+            font-weight: 600;
+        }
+        .btn-danger:hover { 
+            background-color: #B92D47; 
+            border-color: #B92D47; 
+            box-shadow: 0 4px 10px rgba(185, 45, 71, 0.3);
+        }
+        .btn-outline-light { border-width: 2px; font-weight: 600; }
+        
+        /* Modals */
+        .modal-content { border-radius: 15px; border: none; overflow: hidden; }
+        .modal-header { background-color: var(--primary-color) !important; color: white; border-bottom: none; }
+        .modal-footer { border-top: none; }
+        
+        /* Floating Action Button for Wardrobe */
+        .fab-wardrobe {
+            position: fixed; bottom: 30px; right: 30px; width: 65px; height: 65px;
+            background: linear-gradient(135deg, #2c3e50, #4ca1af); 
+            color: white; border-radius: 50%;
+            display: flex; align-items: center; justify-content: center; font-size: 28px;
+            box-shadow: 0 6px 15px rgba(0,0,0,0.3); cursor: pointer; z-index: 1000;
+            transition: transform 0.2s, box-shadow 0.2s;
+        }
+        .fab-wardrobe:hover { transform: scale(1.1); box-shadow: 0 8px 20px rgba(0,0,0,0.4); }
+        
+        /* Action Buttons on Cards */
+        .card-actions {
+            position: absolute;
+            top: 10px;
+            right: 10px;
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+            z-index: 10;
+        }
+        .btn-action { 
+            cursor: pointer; 
+            color: #555; 
+            transition: all 0.2s; 
+            background: rgba(255,255,255,0.9); 
+            border:none; 
+            width: 35px; 
+            height: 35px; 
+            border-radius: 50%;
+            display: flex; 
+            align-items: center; 
+            justify-content: center; 
+            box-shadow: 0 2px 5px rgba(0,0,0,0.2);
+        }
+        .btn-action:hover { background: white; transform: scale(1.1); }
+        /* Active states for feedback buttons */
+        .btn-action.liked { color: #e74c3c; background-color: #fceceb; } /* Red for like */
+        .btn-action.disliked { color: #34495e; background-color: #e2e6ea; } /* Dark blue-grey for dislike */
+        
+        /* Tag Badge */
+        .category-badge {
+            position: absolute;
+            top: 10px;
+            left: 10px;
+            background: rgba(0, 0, 0, 0.6);
+            color: white;
+            padding: 4px 10px;
+            border-radius: 20px;
+            font-size: 0.75rem;
+            font-weight: 600;
+            z-index: 10;
+        }
+
+        /* Z-INDEX FIX: Image Viewer MUST be higher than standard modals (1055) */
+        #imageViewerModal { z-index: 1060 !important; }
+        
+        .deep-dive-img { cursor: pointer; }
+        
+        /* Admin Panel */
+        .admin-panel-container { 
+            border: 2px dashed var(--primary-color); 
+            padding: 30px; 
+            background-color: #fff0f0; 
+            display: none; 
+            margin-bottom: 40px; 
+            border-radius: 15px; 
+        }
+    </style>
+</head>
+<body>
+
+    <!-- Navigation -->
+    <nav class="navbar navbar-expand-lg navbar-dark bg-dark sticky-top shadow-sm">
+        <div class="container">
+            <a class="navbar-brand fw-bold" href="index.html"><i class="fas fa-tshirt me-2"></i>FT & RS</a>
+            <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav">
+                <span class="navbar-toggler-icon"></span>
+            </button>
+            <div class="collapse navbar-collapse" id="navbarNav">
+                <ul class="navbar-nav ms-auto align-items-center">
+                    <li class="nav-item"><a href="#" class="nav-link px-3" onclick="openStyleProfile()">My Style</a></li>
+                   <!-- <li class="nav-item"><a href="dashboard.html" class="nav-link px-3">Analytics</a></li>
+                    <li class="nav-item"><a href="gallery.html" class="nav-link px-3">Gallery</a></li>
+                --> <li class="nav-item ms-2">
+                        <a class="btn btn-outline-light btn-sm rounded-pill px-4" href="admin.html">
+                            <i class="fas fa-user-shield me-1"></i> Admin
+                        </a>
+                    </li>
+                </ul>
+            </div>
+        </div>
+    </nav>
+
+    <!-- Hero Section -->
+    <header class="hero-section text-center">
+        <div class="container hero-content">
+            <h1 class="display-3 fw-bold mb-3">Your AI Fashion Assistant</h1>
+            <p class="lead mb-5 fs-5 opacity-90">Discover real-time trends, find similar items, and complete your look with AI.</p>
+            <div class="d-flex justify-content-center gap-3 mt-4 flex-wrap">
+                <button class="btn btn-light btn-lg fw-bold text-danger px-5 py-3 rounded-pill shadow" data-bs-toggle="modal" data-bs-target="#uploadModal">
+                    <i class="fas fa-search me-2"></i>Find Similar
+                </button>
+                <button class="btn btn-dark btn-lg fw-bold px-5 py-3 rounded-pill shadow" data-bs-toggle="modal" data-bs-target="#stylistModal">
+                    <i class="fas fa-magic me-2"></i>Complete the Look
+                </button>
+            </div>
+        </div>
+    </header>
+
+    <div class="container">
+        <!-- ADMIN PANEL SECTION (Hidden by default) -->
+        <div id="adminSection" class="admin-panel-container">
+            <h3 class="mb-4 text-center text-primary" style="color: var(--primary-color) !important;">Admin Data Manager</h3>
+            <ul class="nav nav-tabs" id="adminTabs">
+                <li class="nav-item"><button class="nav-link active" data-bs-toggle="tab" data-bs-target="#scrape-content">Social Media Scraping</button></li>
+                <li class="nav-item"><button class="nav-link" data-bs-toggle="tab" data-bs-target="#upload-content">External Data Upload</button></li>
+            </ul>
+            <div class="tab-content border border-top-0 p-4 bg-white rounded-bottom shadow-sm">
+                <!-- Scraper Tab -->
+                <div class="tab-pane fade show active" id="scrape-content">
+                    <div class="row g-3">
+                        <div class="col-md-4">
+                            <select id="sourceInput" class="form-select">
+                                <option value="pinterest">Pinterest</option>
+                                <option value="instagram">Instagram</option>
+                            </select>
+                        </div>
+                        <div class="col-md-4"><input type="text" id="hashtagInput" class="form-control" placeholder="Hashtag (e.g., streetstyle)"></div>
+                        <div class="col-md-4"><input type="number" id="limitInput" class="form-control" value="50"></div>
+                        <div class="col-12"><button class="btn btn-danger w-100" onclick="startScraping()">Start Scraping</button></div>
+                        <div class="col-12"><div class="alert alert-secondary py-2 mt-2" id="adminStatus">Status: Idle</div></div>
+                    </div>
+                </div>
+                <!-- Upload Tab -->
+                <div class="tab-pane fade" id="upload-content">
+                    <form id="upload-form" class="row g-3">
+                        <div class="col-md-6"><input type="file" id="dataset_file" name="file" class="form-control" required></div>
+                        <div class="col-md-6"><input type="text" name="source_name" class="form-control" value="Kaggle Data"></div>
+                        <div class="col-12"><button type="submit" class="btn btn-primary w-100">Upload</button></div>
+                        <div class="col-12"><div class="alert alert-secondary py-2 mt-2" id="uploadStatus">Status: Ready.</div></div>
+                    </form>
+                </div>
+            </div>
+        </div>
+
+        <!-- TRENDS VISUALIZATION DASHBOARD -->
+        <div class="d-flex align-items-center mb-4 border-bottom pb-3">
+            <h3 class="text-secondary fw-bold mb-0 flex-grow-1">
+                <i class="fas fa-fire me-2 text-danger"></i>Trending Styles Now
+            </h3>
+            <button class="btn btn-sm btn-outline-secondary rounded-pill px-3" onclick="loadTrends()">
+                <i class="fas fa-sync-alt me-1"></i> Refresh
+            </button>
+        </div>
+        
+        <div class="row mt-3 g-4" id="trendsContainer">
+            <div class="col-12 text-center p-5">
+                <div class="spinner-border text-danger" role="status"></div>
+                <p class="text-muted mt-3">Loading latest trends from AI model...</p>
+            </div>
+        </div>
+    </div>
+
+    <!-- WISH LIST FAB -->
+    <div class="fab-wardrobe" onclick="openWardrobe()" title="My Saved Wishlist">
+        <i class="fas fa-heart"></i>
+    </div>
+
+    <!-- STYLE PROFILE MODAL -->
+    <div class="modal fade" id="styleProfileModal" tabindex="-1">
+        <div class="modal-dialog modal-dialog-centered">
+            <div class="modal-content shadow-lg">
+                <div class="modal-header">
+                    <h5 class="modal-title fw-bold"><i class="fas fa-user-tag me-2"></i>My Style Profile</h5>
+                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body p-4">
+                    <p class="text-muted small">Select the styles you love. We'll highlight matching trends for you.</p>
+                    <div class="row g-2" id="styleCheckboxes">
+                        <!-- Populated by JS -->
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-primary w-100" onclick="saveStyleProfile()">Save Preferences</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 1. SIMILARITY SEARCH MODAL -->
+    <div class="modal fade" id="uploadModal" tabindex="-1">
+        <div class="modal-dialog modal-lg modal-dialog-centered">
+            <div class="modal-content shadow-lg">
+                <div class="modal-header">
+                    <h5 class="modal-title fw-bold"><i class="fas fa-search me-2"></i>Find Similar Items</h5>
+                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body p-5">
+                    <form id="recommendation-form">
+                        <div class="row g-3 align-items-end">
+                            <div class="col-md-7">
+                                <label class="form-label fw-bold text-secondary">1. Upload Item Image</label>
+                                <input type="file" id="outfitFile" name="file" class="form-control form-control-lg" required>
+                            </div>
+                            <div class="col-md-3">
+                                <label class="form-label fw-bold text-secondary">2. Filter Gender</label>
+                                <select id="genderFilter" name="gender" class="form-select form-select-lg">
+                                    <option value="Unisex">All</option>
+                                    <option value="Men">Men</option>
+                                    <option value="Women">Women</option>
+                                </select>
+                            </div>
+                            <div class="col-md-2">
+                                <button type="submit" class="btn btn-primary w-100 btn-lg">Find</button>
+                            </div>
+                        </div>
+                    </form>
+                    <div id="recStatus" class="mt-4 alert alert-light text-center border-0 bg-light rounded-3 py-4">
+                        <i class="fas fa-cloud-upload-alt fa-2x mb-2 text-secondary"></i><br>
+                        Upload an image to analyze its style.
+                    </div>
+                    <div id="recOutput" class="row mt-4 g-4" style="display:none;"></div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 2. AI STYLIST MODAL -->
+    <div class="modal fade" id="stylistModal" tabindex="-1">
+        <div class="modal-dialog modal-xl modal-dialog-centered">
+            <div class="modal-content shadow-lg">
+                <div class="modal-header">
+                    <h5 class="modal-title fw-bold"><i class="fas fa-magic me-2"></i>AI Stylist: Complete The Look</h5>
+                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body p-4">
+                    <form id="stylist-form" class="bg-light p-4 rounded-3 mb-4">
+                        <div class="row g-3">
+                            <div class="col-md-5">
+                                <label class="fw-bold text-secondary">1. Upload Item</label>
+                                <input type="file" id="stylistFile" name="file" class="form-control" required>
+                            </div>
+                            <div class="col-md-3">
+                                <label class="fw-bold text-secondary">2. Category</label>
+                                <select id="stylistCategory" name="input_category" class="form-select">
+                                    <option value="Topwear">Top (Shirt/Jacket)</option>
+                                    <option value="Bottomwear">Bottom (Pants/Skirt)</option>
+                                    <option value="Footwear">Footwear (Shoes/Boots)</option>
+                                    <option value="Accessories">Accessories</option>
+                                </select>
+                            </div>
+                            <div class="col-md-2">
+                                <label class="fw-bold text-secondary">3. Gender</label>
+                                <select id="stylistGender" name="gender" class="form-select">
+                                    <option value="Men">Men</option>
+                                    <option value="Women">Women</option>
+                                    <option value="Unisex">Unisex</option>
+                                </select>
+                            </div>
+                            <div class="col-md-2 d-flex align-items-end">
+                                <button type="submit" class="btn btn-dark w-100 fw-bold">Generate Look</button>
+                            </div>
+                        </div>
+                    </form>
+
+                    <div id="stylistStatus" class="alert alert-light text-center border-0 py-5">
+                        <i class="fas fa-tshirt fa-3x mb-3 text-secondary opacity-50"></i><br>
+                        Ready to style! Upload an item to see matching suggestions.
+                    </div>
+                    
+                    <div id="stylistOutput" class="row g-4 justify-content-center" style="display: none;">
+                        <div class="col-md-3 text-center">
+                            <h6 class="text-secondary fw-bold mb-3">Your Item</h6>
+                            <div class="card shadow-sm border-0 p-2 h-100">
+                                <img id="stylistPreview" class="card-img-top rounded" style="max-height: 250px; object-fit: contain;">
+                            </div>
+                        </div>
+                        <div class="col-md-9">
+                            <h5 class="text-primary fw-bold mb-3">Suggested Complements:</h5>
+                            <div class="row g-3" id="outfitGrid"></div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 3. WARDROBE (WISHLIST) MODAL -->
+    <div class="modal fade" id="wardrobeModal" tabindex="-1">
+        <div class="modal-dialog modal-xl modal-dialog-scrollable">
+            <div class="modal-content shadow-lg">
+                <div class="modal-header bg-dark text-white">
+                    <h5 class="modal-title"><i class="fas fa-heart me-2 text-danger"></i>My Wishlist</h5>
+                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body bg-light p-4">
+                    <div id="wardrobeGrid" class="row g-4">
+                        <!-- Wardrobe items loaded here -->
+                    </div>
+                </div>
+                <div class="modal-footer bg-light border-top-0">
+                    <button class="btn btn-outline-danger btn-sm" onclick="clearWardrobe()">Clear All</button>
+                    <button class="btn btn-secondary btn-sm" data-bs-dismiss="modal">Close</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 4. FULL IMAGE VIEWER MODAL -->
+    <div class="modal fade" id="imageViewerModal" tabindex="-1">
+        <div class="modal-dialog modal-xl modal-dialog-centered">
+            <!-- RESTORED: Standard modal content structure with white background so body is visible -->
+            <div class="modal-content shadow-lg border-0">
+                 <div class="modal-header bg-dark text-white">
+                    <h5 class="modal-title" id="imageViewerTitle">Full Image View</h5>
+                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body text-center p-0 bg-white">
+                    <img id="fullImageViewer" src="" class="img-fluid" style="max-height: 80vh; object-fit: contain;">
+                </div>
+                <!-- Added footer for wardrobe action in full view -->
+                <div class="modal-footer bg-light border-top-0 justify-content-center">
+                     <button id="modalSaveBtn" class="btn btn-outline-danger rounded-pill px-4">
+                        <i class="fas fa-heart me-2"></i> Save to Wishlist
+                     </button>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <!-- 5. TREND DEEP DIVE MODAL -->
+    <div class="modal fade" id="trendDeepDiveModal" tabindex="-1">
+        <div class="modal-dialog modal-xl modal-dialog-centered modal-dialog-scrollable">
+            <div class="modal-content shadow-lg">
+                <div class="modal-header bg-primary text-white">
+                    <h5 class="modal-title"><i class="fas fa-layer-group me-2"></i>Deep Dive: Trend <span id="deepDiveTrendId"></span></h5>
+                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body p-4 bg-light">
+                    <h6 class="text-secondary mb-4">Browsing all items in this style cluster.</h6>
+                    <div id="deepDiveGrid" class="row g-4">
+                        <div class="col-12 text-center" id="deepDiveStatus"><div class="spinner-border text-primary"></div></div>
+                    </div>
+                    <div class="text-center mt-5">
+                        <button id="deepDiveLoadMoreBtn" class="btn btn-outline-primary px-5 rounded-pill" onclick="loadTrendItems(true)" style="display:none;">Load More</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <script>
+        const API_URL = "http://localhost:8000";
+        // Auth header for admin actions (if needed)
+        const AUTH_HEADER = 'Basic ' + btoa('admin:secret');
+        
+        // Modal instances
+        const wardrobeModal = new bootstrap.Modal(document.getElementById('wardrobeModal'));
+        const imageViewerModal = new bootstrap.Modal(document.getElementById('imageViewerModal'));
+        const styleProfileModal = new bootstrap.Modal(document.getElementById('styleProfileModal'));
+        const trendDeepDiveModal = new bootstrap.Modal(document.getElementById('trendDeepDiveModal'));
+        
+        let currentDeepDiveTrendId = null;
+        let currentDeepDivePage = 1;
+        const DEEP_DIVE_LIMIT = 24; 
+
+        // --- UTILS ---
+        function toggleAdmin() {
+            const panel = document.getElementById('adminSection');
+            panel.style.display = panel.style.display === 'none' || panel.style.display === '' ? 'block' : 'none';
+        }
+        
+        function updateStatus(divId, message, type = 'secondary') {
+            const div = document.getElementById(divId);
+            div.className = `alert alert-${type} py-2 mt-2 text-center`;
+            div.innerHTML = message;
+        }
+
+        // --- IMAGE VIEWER LOGIC (STACKING FIX + SAVE) ---
+        function viewFullImage(url, title, itemDataStr) {
+            // NOTE: We do NOT hide the parent modal. Stacking via Z-index handles visibility.
+            document.getElementById('fullImageViewer').src = url;
+            document.getElementById('imageViewerTitle').textContent = title || 'Image View';
+            
+            // Setup Save Button in Modal
+            const saveBtn = document.getElementById('modalSaveBtn');
+            // Remove old listener by cloning
+            const newBtn = saveBtn.cloneNode(true);
+            saveBtn.parentNode.replaceChild(newBtn, saveBtn);
+            
+            newBtn.onclick = function() {
+                 addToWardrobe(itemDataStr);
+            };
+            
+            imageViewerModal.show();
+        }
+        
+        document.getElementById('imageViewerModal').addEventListener('hidden.bs.modal', function () {
+            if (currentDeepDiveTrendId !== null) {
+                trendDeepDiveModal.show();
+            }
+        });
+
+        // --- TRENDS VISUALIZATION ---
+        async function loadTrends() {
+            const container = document.getElementById('trendsContainer');
+            const userStyles = JSON.parse(localStorage.getItem('userStyles')) || [];
+            
+            try {
+                const response = await fetch(`${API_URL}/trends`);
+                const items = await response.json();
+                
+                if(items.length === 0) {
+                    container.innerHTML = `<div class="col-12 text-center py-5"><i class="fas fa-box-open fa-3x text-muted mb-3"></i><p class="text-muted">No trends found.</p></div>`;
+                    return;
+                }
+
+                container.innerHTML = items.map(item => {
+                    const isMatch = userStyles.some(style => (item.tag || '').toLowerCase().includes(style.toLowerCase()));
+                    const highlightClass = isMatch ? 'border border-2 border-warning' : 'border-0';
+                    const badge = isMatch ? '<span class="position-absolute top-0 start-0 badge bg-warning text-dark m-2 shadow-sm">Recommended for You</span>' : '';
+
+                    return `
+                    <div class="col-12 col-sm-6 col-md-4 col-lg-3 mb-4">
+                        <div class="card trend-card shadow-sm h-100 ${highlightClass}" onclick="openDeepDive(${item.trend_id})">
+                            <div class="position-relative">
+                                ${badge}
+                                <img src="${item.url}" onerror="this.src='https://placehold.co/400x400/eeeeee/999999?text=Trend+${item.trend_id}';" alt="Trend ${item.trend_id}">
+                                <span class="position-absolute bottom-0 end-0 badge bg-danger m-2 shadow-sm rounded-pill">${item.count} Items</span>
+                            </div>
+                            <div class="card-body p-3">
+                                <h6 class="card-title mb-1 text-primary fw-bold">Trend Cluster #${item.trend_id}</h6>
+                                <p class="card-text text-muted mb-0 small text-truncate">
+                                    <i class="fas fa-tag me-1"></i> #${item.tag || 'uncategorized'}
+                                </p>
+                            </div>
+                        </div>
+                    </div>`;
+                }).join('');
+            } catch { container.innerHTML = "<p class='text-danger text-center'>Backend Connection Failed. Is main.py running?</p>"; }
+        }
+
+        // --- DEEP DIVE LOGIC ---
+        function openDeepDive(trendId) {
+            currentDeepDiveTrendId = trendId;
+            currentDeepDivePage = 1;
+            document.getElementById('deepDiveTrendId').textContent = `#${trendId}`;
+            document.getElementById('deepDiveGrid').innerHTML = '<div class="col-12 text-center" id="deepDiveStatus"><div class="spinner-border text-primary"></div></div>';
+            document.getElementById('deepDiveLoadMoreBtn').style.display = 'none';
+            loadTrendItems(false);
+            trendDeepDiveModal.show();
+        }
+
+        async function loadTrendItems(append = false) {
+            const grid = document.getElementById('deepDiveGrid');
+            const loadMoreBtn = document.getElementById('deepDiveLoadMoreBtn');
+            
+            if (!append) {
+                grid.innerHTML = '';
+                currentDeepDivePage = 1;
+            }
+            loadMoreBtn.disabled = true;
+            loadMoreBtn.textContent = 'Loading...';
+
+            try {
+                // IMPORTANT: Search by trend_id
+                const trendSearch = `${currentDeepDiveTrendId}`;
+                const url = `${API_URL}/images/list?page=${currentDeepDivePage}&limit=${DEEP_DIVE_LIMIT}&search=${trendSearch}`;
+                
+                const response = await fetch(url);
+                const items = await response.json();
+
+                if (!append) grid.innerHTML = '';
+
+                if (items.length === 0 && currentDeepDivePage === 1) {
+                    grid.innerHTML = '<div class="col-12 text-center py-5 text-muted">No items found for this trend.</div>';
+                    loadMoreBtn.style.display = 'none';
+                    return;
+                }
+
+                items.forEach(item => {
+                    const itemData = encodeURIComponent(JSON.stringify({...item, category: item.category}));
+                    const itemUrlEncoded = `'${item.url.replace(/'/g, "\\'")}'`;
+                    const itemNameEncoded = `'Item #${item.id} (${item.tags.split(',')[0]})'`;
+                    // Pass itemData as string properly
+                    const itemDataStr = `'${itemData}'`;
+                    
+                    grid.innerHTML += `
+                        <div class="col-xl-3 col-lg-4 col-6">
+                            <div class="card shadow-sm h-100 recommendation-item border-0">
+                                <div class="position-relative">
+                                    <img src="${item.url}" class="card-img-top deep-dive-img" onclick="viewFullImage(${itemUrlEncoded}, ${itemNameEncoded}, ${itemDataStr})" onerror="this.src='https://placehold.co/300?text=ERR'" style="height: 200px; object-fit: cover;">
+                                </div>
+                                <div class="card-body p-2">
+                                    <span class="badge bg-secondary mb-1 opacity-75">${item.category}</span>
+                                    <p class="small text-muted mb-0 text-truncate">${item.tags}</p>
+                                </div>
+                            </div>
+                        </div>
+                    `;
+                });
+                
+                if (items.length === DEEP_DIVE_LIMIT) {
+                    loadMoreBtn.style.display = 'inline-block';
+                    currentDeepDivePage++;
+                } else {
+                    loadMoreBtn.style.display = 'none';
+                }
+                loadMoreBtn.disabled = false;
+                loadMoreBtn.textContent = 'Load More';
+
+            } catch (error) {
+                console.error("Deep Dive Fetch Error:", error);
+                grid.innerHTML = '<div class="col-12 text-center py-5 text-danger">Error fetching trend items.</div>';
+            }
+        }
+
+        // --- ADMIN & WARDROBE FUNCTIONS ---
+        async function startScraping() {
+            const tag = document.getElementById('hashtagInput').value || "fashion";
+            const limit = document.getElementById('limitInput').value || 50;
+            const source = document.getElementById('sourceInput').value;
+            
+            updateStatus('adminStatus', `Starting ${source} scraping...`, 'warning');
+            
+            try {
+                const params = new URLSearchParams({ hashtag: tag, limit: parseInt(limit), source: source });
+                const response = await fetch(`${API_URL}/admin/scrape?${params.toString()}`, {
+                    method: 'POST',
+                    headers: { 'Authorization': AUTH_HEADER }
+                });
+                const data = await response.json();
+                if (response.ok) {
+                    updateStatus('adminStatus', `SUCCESS: ${data.message}`, 'success');
+                    setTimeout(() => { loadTrends(); }, 2000);
+                } else {
+                    updateStatus('adminStatus', `Error: ${JSON.stringify(data.detail)}`, 'danger');
+                }
+            } catch { updateStatus('adminStatus', "Network Error.", 'danger'); }
+        }
+
+        document.getElementById('upload-form').addEventListener('submit', async function(e) {
+            e.preventDefault();
+            const fileInput = document.getElementById('dataset_file');
+            if (fileInput.files.length === 0) return;
+            updateStatus('uploadStatus', 'Uploading...', 'warning');
+            const formData = new FormData(this);
+            const AUTH_HEADER = 'Basic ' + btoa('admin:secret');
+
+            try {
+                const response = await fetch(`${API_URL}/admin/upload_dataset`, {
+                    method: 'POST', headers: { 'Authorization': AUTH_HEADER }, body: formData 
+                });
+                const data = await response.json();
+                if (response.ok) {
+                    updateStatus('uploadStatus', `SUCCESS: ${data.message}`, 'success');
+                    setTimeout(() => { loadTrends(); }, 2000);
+                } else {
+                    updateStatus('uploadStatus', `Error: ${JSON.stringify(data.detail)}`, 'danger');
+                }
+            } catch { updateStatus('uploadStatus', 'Network Error.', 'danger'); }
+        });
+
+        // --- GENERATE HTML FOR ITEM CARDS ---
+        function createItemCardHTML(item, category) {
+            const itemData = encodeURIComponent(JSON.stringify({...item, category: category}));
+            const itemUrlEncoded = `'${item.url.replace(/'/g, "\\'")}'`;
+            const itemNameEncoded = `'${item.name.replace(/'/g, "\\'")}'`;
+            const itemDataStr = `'${itemData}'`;
+
+            return `
+                <div class="col-md-4 col-sm-6">
+                    <div class="card h-100 shadow-sm recommendation-item border-0">
+                        <div class="position-relative">
+                            <span class="category-badge">${category}</span>
+                            
+                            <div class="card-actions">
+                                <button class="btn-action shadow-sm btn-save" onclick="toggleLike(this, '${itemData}'); event.stopPropagation();" title="Save to Wishlist">
+                                    <i class="fas fa-heart"></i>
+                                </button>
+                                <button class="btn-action shadow-sm btn-save" onclick="toggleDislike(this, '${itemData}'); event.stopPropagation();" title="Dislike">
+                                    <i class="fas fa-thumbs-down"></i>
+                                </button>
+                            </div>
+
+                            <img src="${item.url}" class="card-img-top" onclick="viewFullImage(${itemUrlEncoded}, ${itemNameEncoded}, ${itemDataStr})" onerror="this.src='https://placehold.co/300?text=No+Match'" style="height: 200px; object-fit: cover;">
+                        </div>
+                        <div class="card-body p-3 text-center">
+                            <h6 class="card-title text-dark fw-bold mb-1 small text-truncate">${item.name}</h6>
+                            <span class="badge bg-success bg-opacity-75 rounded-pill px-3">${item.confidence} Match</span>
+                        </div>
+                    </div>
+                </div>
+            `;
+        }
+        
+        function shareItem(url) {
+            navigator.clipboard.writeText(url).then(() => { alert("Image URL copied!"); });
+        }
+        
+        function toggleLike(btn, itemStr) {
+            const actionsDiv = btn.closest('.card-actions');
+            const dislikeBtn = actionsDiv.querySelector('button[title="Dislike"]');
+            
+            if (dislikeBtn && dislikeBtn.classList.contains('disliked')) {
+                dislikeBtn.classList.remove('disliked');
+                // Could remove specific styling for dislike here
+                dislikeBtn.style.color = '#999'; // Reset color
+            }
+
+            btn.classList.toggle('liked');
+            
+            if (btn.classList.contains('liked')) {
+                 addToWardrobe(itemStr);
+            } else {
+                 const item = JSON.parse(decodeURIComponent(itemStr));
+                 removeFromWardrobe(item.url);
+            }
+        }
+        
+        function toggleDislike(btn, itemStr) {
+             const actionsDiv = btn.closest('.card-actions');
+             const likeBtn = actionsDiv.querySelector('button[title="Like"]'); // Note: Updated title selector
+             
+             if (likeBtn && likeBtn.classList.contains('liked')) {
+                 likeBtn.classList.remove('liked');
+                 const item = JSON.parse(decodeURIComponent(itemStr));
+                 removeFromWardrobe(item.url);
+             }
+
+             btn.classList.toggle('disliked');
+             if(btn.classList.contains('disliked')) {
+                 btn.style.color = '#34495e';
+             } else {
+                 btn.style.color = '#999';
+             }
+        }
+
+        function getWardrobe() { return JSON.parse(localStorage.getItem('fashionWardrobe')) || []; }
+        function addToWardrobe(itemStr) {
+            const item = JSON.parse(decodeURIComponent(itemStr));
+            let wardrobe = getWardrobe();
+            if (!wardrobe.some(i => i.url === item.url)) {
+                wardrobe.push(item);
+                localStorage.setItem('fashionWardrobe', JSON.stringify(wardrobe));
+                alert("Saved to Wishlist!");
+            } else { alert("Already in Wishlist."); }
+        }
+        function removeFromWardrobe(url) {
+            let wardrobe = getWardrobe();
+            wardrobe = wardrobe.filter(i => i.url !== url);
+            localStorage.setItem('fashionWardrobe', JSON.stringify(wardrobe));
+            // Refresh if visible
+            if (document.getElementById('wardrobeModal').classList.contains('show')) {
+                 openWardrobe(); 
+            }
+        }
+        function clearWardrobe() {
+            if(confirm("Clear entire wishlist?")) {
+                localStorage.removeItem('fashionWardrobe');
+                openWardrobe();
+            }
+        }
+        function openWardrobe() {
+            const grid = document.getElementById('wardrobeGrid');
+            const items = getWardrobe();
+            
+            if (items.length === 0) {
+                grid.innerHTML = '<div class="col-12 text-center py-5"><i class="fas fa-heart-broken fa-3x text-muted mb-3"></i><h4 class="text-muted">Your Wishlist is empty!</h4><p>Use the AI Stylist or Trend cards to save items.</p></div>';
+            } else {
+                grid.innerHTML = items.map(item => {
+                    const itemUrlEncoded = `'${item.url.replace(/'/g, "\\'")}'`;
+                    const itemNameEncoded = `'${(item.name || item.tags).replace(/'/g, "\\'")}'`;
+                    
+                    return `
+                    <div class="col-md-3 col-6">
+                        <div class="card wardrobe-item h-100 border-0 shadow-sm">
+                            <div class="position-relative">
+                                <img src="${item.url}" class="card-img-top" onclick="viewFullImage(${itemUrlEncoded}, ${itemNameEncoded})" style="height: 200px; object-fit: cover;">
+                                <button class="btn btn-danger btn-sm position-absolute bottom-0 end-0 m-2 shadow rounded-circle" style="width:35px;height:35px;padding:0;" onclick="removeFromWardrobe('${item.url}')"><i class="fas fa-trash"></i></button>
+                            </div>
+                            <div class="card-body p-2">
+                                <small class="d-block text-truncate fw-bold">${item.name || item.tags}</small>
+                                <span class="badge bg-secondary mb-0">${item.category || 'Item'}</span>
+                            </div>
+                        </div>
+                    </div>
+                `}).join('');
+            }
+            wardrobeModal.show();
+        }
+        
+        // --- STYLE PROFILE ---
+        const STYLE_OPTIONS = ["Casual", "Formal", "Streetwear", "Vintage", "Boho", "Minimalist", "Sporty", "Chic"];
+        function openStyleProfile() {
+            const container = document.getElementById('styleCheckboxes');
+            const savedStyles = JSON.parse(localStorage.getItem('userStyles')) || [];
+            container.innerHTML = STYLE_OPTIONS.map(style => `
+                <div class="col-6"><div class="form-check"><input class="form-check-input" type="checkbox" value="${style}" id="style-${style}" ${savedStyles.includes(style) ? 'checked' : ''}><label class="form-check-label" for="style-${style}">${style}</label></div></div>
+            `).join('');
+            styleProfileModal.show();
+        }
+        function saveStyleProfile() {
+            const selected = Array.from(document.querySelectorAll('#styleCheckboxes input:checked')).map(cb => cb.value);
+            localStorage.setItem('userStyles', JSON.stringify(selected));
+            styleProfileModal.hide();
+            loadTrends();
+            alert("Profile saved!");
+        }
+
+        // --- STYLIST LOGIC ---
+        document.getElementById('stylist-form').addEventListener('submit', async function(e) {
+            e.preventDefault();
+            const form = this;
+            const file = form.stylistFile.files[0];
+            const inputGender = document.getElementById('stylistGender').value;
+            document.getElementById('stylistPreview').src = URL.createObjectURL(file);
+            document.getElementById('stylistOutput').style.display = 'none';
+            updateStatus('stylistStatus', '<i class="fas fa-cog fa-spin me-2"></i> Analyzing attributes and generating contextual look...', 'warning');
+
+            const formData = new FormData(form);
+            formData.append('gender', inputGender);
+
+            try {
+                const res = await fetch(`${API_URL}/recommend/complete_outfit`, { method: 'POST', body: formData });
+                const data = await res.json();
+                
+                if(res.ok && Object.keys(data.outfit).length > 0) {
+                    const outfitGrid = document.getElementById('outfitGrid');
+                    outfitGrid.innerHTML = '';
+                    
+                    for (const [category, item] of Object.entries(data.outfit)) {
+                        outfitGrid.innerHTML += createItemCardHTML(item, category);
+                    }
+                    updateStatus('stylistStatus', '<i class="fas fa-check-circle me-2"></i>Outfit Generation Complete!', 'success');
+                    document.getElementById('stylistOutput').style.display = 'flex';
+                } else {
+                    updateStatus('stylistStatus', '<i class="fas fa-info-circle me-2"></i>No matches found.', 'info');
+                }
+            } catch(e) { updateStatus('stylistStatus', 'Network Error.', 'danger'); }
+        });
+
+        // --- SIMILARITY LOGIC ---
+        document.getElementById('recommendation-form').addEventListener('submit', async function(e) {
+            e.preventDefault();
+            const form = this;
+            const file = form.outfitFile.files[0];
+            updateStatus('recStatus', '<i class="fas fa-cog fa-spin me-2"></i> Analyzing...', 'warning');
+            document.getElementById('recOutput').style.display = 'none';
+
+            const formData = new FormData(form);
+            try {
+                const res = await fetch(`${API_URL}/recommend`, { method: 'POST', body: formData });
+                const data = await res.json();
+                
+                if (res.ok) {
+                    updateStatus('recStatus', 'Analysis Complete.', 'success');
+                    document.getElementById('recOutput').style.display = 'flex';
+                    document.getElementById('recOutput').innerHTML = data.recommendations.map(item => createItemCardHTML(item, "Similar")).join('');
+                } else {
+                    updateStatus('recStatus', 'Error generating recommendations.', 'danger');
+                }
+            } catch { updateStatus('recStatus', 'Network Error.', 'danger'); }
+        });
+
+        window.onload = loadTrends;
+    </script>
+</body>
+</html>

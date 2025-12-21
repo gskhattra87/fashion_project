@@ -1,0 +1,363 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>FashionAI - Virtual Style Studio</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <!-- Interact.js for Drag/Drop -->
+    <script src="https://cdn.jsdelivr.net/npm/interactjs/dist/interact.min.js"></script>
+    <!-- HTML2Canvas for Export -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+    
+    <style>
+        :root { --primary-color: #D83A56; --secondary-color: #FF6F61; --dark-text: #2c3e50; --light-bg: #f8f9fa; }
+        body { background-color: var(--light-bg); color: var(--dark-text); font-family: 'Segoe UI', sans-serif; overflow: hidden; }
+        
+        .studio-container { height: 100vh; display: flex; }
+        
+        /* Wardrobe Panel (Left) */
+        .wardrobe-panel { width: 320px; background: white; border-right: 1px solid #ddd; display: flex; flex-direction: column; z-index: 100; box-shadow: 2px 0 10px rgba(0,0,0,0.05); }
+        .wardrobe-header { padding: 15px; border-bottom: 1px solid #eee; background: #fff; }
+        .category-tabs .nav-link { color: #666; font-size: 0.85rem; padding: 10px; border-radius: 0; border-bottom: 2px solid transparent; }
+        .category-tabs .nav-link.active { color: var(--primary-color); border-bottom-color: var(--primary-color); font-weight: 600; }
+        
+        .wardrobe-grid { flex: 1; overflow-y: auto; padding: 10px; display: grid; grid-template-columns: repeat(2, 1fr); gap: 10px; align-content: start; background: #fdfdfd; }
+        .wardrobe-item { cursor: grab; border: 1px solid #eee; border-radius: 6px; overflow: hidden; background: white; transition: all 0.2s; height: 120px; display: flex; align-items: center; justify-content: center; position: relative; }
+        .wardrobe-item:hover { border-color: var(--primary-color); transform: translateY(-2px); box-shadow: 0 4px 8px rgba(0,0,0,0.08); }
+        .wardrobe-item img { max-width: 90%; max-height: 90%; object-fit: contain; pointer-events: none; }
+        
+        /* Canvas Area (Center) */
+        .canvas-area { flex: 1; background-color: #e9ecef; background-image: radial-gradient(#cbd5e0 1px, transparent 1px); background-size: 20px 20px; display: flex; justify-content: center; align-items: center; position: relative; overflow: hidden; }
+        
+        #styleBoard { width: 400px; height: 600px; background-color: white; box-shadow: 0 20px 50px rgba(0,0,0,0.15); position: relative; overflow: hidden; border-radius: 4px; }
+        #baseImage { width: 100%; height: 100%; object-fit: cover; pointer-events: none; z-index: 0; }
+        
+        .draggable-item { position: absolute; width: 150px; touch-action: none; user-select: none; cursor: grab; filter: drop-shadow(0 5px 5px rgba(0,0,0,0.2)); z-index: 10; }
+        .draggable-item.active { border: 2px dashed var(--primary-color); cursor: grabbing; }
+        .draggable-item img { width: 100%; height: 100%; object-fit: contain; pointer-events: none; }
+        
+        /* Controls (Right) */
+        .controls-panel { width: 260px; background: white; border-left: 1px solid #ddd; padding: 20px; display: flex; flex-direction: column; gap: 15px; z-index: 100; box-shadow: -2px 0 10px rgba(0,0,0,0.05); }
+        
+        .color-swatch { width: 28px; height: 28px; border-radius: 50%; cursor: pointer; border: 2px solid transparent; box-shadow: 0 0 0 1px #ddd; transition: transform 0.2s; }
+        .color-swatch:hover { transform: scale(1.2); }
+        
+        /* Upload Overlay */
+        #uploadOverlay { position: absolute; top: 0; left: 0; width: 100%; height: 100%; background: white; z-index: 200; display: flex; flex-direction: column; align-items: center; justify-content: center; }
+        .upload-zone { border: 2px dashed #ccc; padding: 40px; border-radius: 15px; text-align: center; cursor: pointer; transition: all 0.3s; width: 400px; }
+        .upload-zone:hover { border-color: var(--primary-color); background: #fff5f6; }
+        
+        .back-btn { position: absolute; top: 15px; left: 15px; z-index: 300; }
+    </style>
+</head>
+<body>
+
+    <a href="index.html" class="btn btn-dark btn-sm rounded-pill px-3 back-btn shadow"><i class="fas fa-arrow-left me-2"></i>Exit Studio</a>
+
+    <div class="studio-container">
+        
+        <!-- Left: Wardrobe -->
+        <div class="wardrobe-panel">
+            <div class="wardrobe-header">
+                <h6 class="fw-bold m-0 text-secondary"><i class="fas fa-tshirt me-2"></i>Wardrobe</h6>
+            </div>
+            
+            <ul class="nav nav-tabs category-tabs nav-justified" id="wardrobeTabs">
+                <li class="nav-item"><a class="nav-link active" data-cat="Topwear" href="#">Tops</a></li>
+                <li class="nav-item"><a class="nav-link" data-cat="Bottomwear" href="#">Pants</a></li>
+                <li class="nav-item"><a class="nav-link" data-cat="Footwear" href="#">Shoes</a></li>
+                <li class="nav-item"><a class="nav-link" data-cat="Accessories" href="#">Accs</a></li>
+            </ul>
+
+            <div class="wardrobe-grid" id="itemsGrid">
+                <div class="text-center w-100 py-5 text-muted">
+                    <div class="spinner-border text-primary spinner-border-sm mb-2"></div><br>Loading Items...
+                </div>
+            </div>
+        </div>
+
+        <!-- Center: Canvas -->
+        <div class="canvas-area">
+            <div id="uploadOverlay">
+                <div class="upload-zone" onclick="document.getElementById('userImageInput').click()">
+                    <i class="fas fa-camera fa-3x text-secondary mb-3"></i>
+                    <h4>Upload Your Photo</h4>
+                    <p class="text-muted small">Full body photo works best.</p>
+                    <div class="mb-3">
+                        <select class="form-select w-75 mx-auto" id="genderSelect" onclick="event.stopPropagation()">
+                            <option value="Men">Men's Catalog</option>
+                            <option value="Women">Women's Catalog</option>
+                        </select>
+                    </div>
+                    <button class="btn btn-primary rounded-pill px-4">Select Image</button>
+                    <input type="file" id="userImageInput" hidden accept="image/*">
+                </div>
+            </div>
+
+            <div id="styleBoard">
+                <img id="baseImage" src="" alt="">
+            </div>
+        </div>
+
+        <!-- Right: Controls -->
+        <div class="controls-panel">
+            <div>
+                <h6 class="fw-bold border-bottom pb-2 mb-3">Edit Item</h6>
+                <div id="activeControls" style="opacity: 0.5; pointer-events: none;">
+                    
+                    <label class="small fw-bold mb-2 text-muted">Layering</label>
+                    <div class="btn-group w-100 mb-3">
+                        <button class="btn btn-outline-secondary btn-sm" onclick="changeZ('down')">Back</button>
+                        <button class="btn btn-outline-secondary btn-sm" onclick="changeZ('up')">Front</button>
+                    </div>
+
+                    <label class="small fw-bold mb-2 text-muted">Tint Color</label>
+                    <div class="d-flex flex-wrap gap-2 mb-3">
+                        <div class="color-swatch" style="background: #fff;" onclick="tintItem(0)"></div>
+                        <div class="color-swatch" style="background: #e74c3c;" onclick="tintItem(340)"></div>
+                        <div class="color-swatch" style="background: #3498db;" onclick="tintItem(200)"></div>
+                        <div class="color-swatch" style="background: #f1c40f;" onclick="tintItem(50)"></div>
+                        <div class="color-swatch" style="background: #2ecc71;" onclick="tintItem(100)"></div>
+                        <div class="color-swatch" style="background: #34495e;" onclick="tintItem(-100, true)"></div>
+                    </div>
+
+                    <button class="btn btn-outline-danger w-100" onclick="deleteActiveItem()">
+                        <i class="fas fa-trash me-2"></i>Remove
+                    </button>
+                </div>
+            </div>
+            
+            <div class="mt-auto">
+                <button class="btn btn-dark w-100 py-2 mb-2" onclick="downloadLook()">
+                    <i class="fas fa-download me-2"></i>Download Look
+                </button>
+                <button class="btn btn-outline-secondary w-100 py-1" onclick="location.reload()">
+                    <i class="fas fa-undo me-2"></i>Reset
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const API_URL = "http://localhost:8000";
+        let activeItem = null;
+        let currentGender = 'Men';
+        let allItems = [];
+        let interactable = null;
+
+        // --- 1. INITIALIZATION ---
+        document.addEventListener('DOMContentLoaded', () => {
+            setupTabs();
+            // Start fetching immediately, but handle errors
+            fetchItems();
+        });
+
+        // --- 2. DATA FETCHING ---
+        async function fetchItems() {
+            const grid = document.getElementById('itemsGrid');
+            try {
+                // Set timeout for fetch
+                const controller = new AbortController();
+                const timeoutId = setTimeout(() => controller.abort(), 8000); // 8 sec timeout
+
+                const res = await fetch(`${API_URL}/images/list?limit=500`, { signal: controller.signal });
+                clearTimeout(timeoutId);
+                
+                if (!res.ok) throw new Error("API Error");
+                
+                allItems = await res.json();
+                
+                if (allItems.length === 0) {
+                     grid.innerHTML = '<div class="text-center py-5 text-muted">Database is empty. <br>Please scrape data in Admin.</div>';
+                } else {
+                     // Data loaded, waiting for user gender selection
+                     grid.innerHTML = '<div class="text-center py-5 text-muted">Upload photo to unlock wardrobe.</div>';
+                }
+
+            } catch(e) {
+                console.error(e);
+                grid.innerHTML = `
+                    <div class="text-center py-5">
+                        <p class="text-danger small">Connection Failed.</p>
+                        <button class="btn btn-sm btn-outline-primary" onclick="fetchItems()">Retry</button>
+                    </div>`;
+            }
+        }
+
+        function filterWardrobe(category) {
+            const grid = document.getElementById('itemsGrid');
+            grid.innerHTML = '';
+
+            const filtered = allItems.filter(i => 
+                (i.category === category) && 
+                (i.gender === currentGender || i.gender === 'Unisex')
+            );
+
+            if(filtered.length === 0) {
+                grid.innerHTML = '<div class="text-center py-5 text-muted small w-100" style="grid-column: span 2;">No items in this category.</div>';
+                return;
+            }
+
+            filtered.forEach(item => {
+                const div = document.createElement('div');
+                div.className = 'wardrobe-item';
+                // FIX: Removed crossorigin="anonymous" to avoid CORS errors with external images
+                div.innerHTML = `<img src="${item.url}" loading="lazy" onerror="this.src='https://placehold.co/100?text=Err'">`;
+                div.onclick = () => addItemToCanvas(item.url);
+                grid.appendChild(div);
+            });
+        }
+
+        function setupTabs() {
+            document.querySelectorAll('.category-tabs .nav-link').forEach(link => {
+                link.addEventListener('click', (e) => {
+                    e.preventDefault();
+                    document.querySelectorAll('.category-tabs .nav-link').forEach(l => l.classList.remove('active'));
+                    e.target.classList.add('active');
+                    filterWardrobe(e.target.dataset.cat);
+                });
+            });
+        }
+
+        // --- 3. UPLOAD HANDLING ---
+        document.getElementById('userImageInput').addEventListener('change', function(e) {
+            if(this.files && this.files[0]) {
+                const file = this.files[0];
+                currentGender = document.getElementById('genderSelect').value;
+                
+                const imgUrl = URL.createObjectURL(file);
+                document.getElementById('baseImage').src = imgUrl;
+                document.getElementById('uploadOverlay').style.display = 'none';
+                
+                // Refresh wardrobe with selected gender
+                filterWardrobe('Topwear');
+            }
+        });
+
+        // --- 4. CANVAS LOGIC ---
+        function addItemToCanvas(url) {
+            const id = 'item-' + Date.now();
+            const el = document.createElement('div');
+            el.className = 'draggable-item';
+            el.id = id;
+            el.style.top = '50px';
+            el.style.left = '50px';
+            el.style.width = '150px';
+            
+            const img = document.createElement('img');
+            img.src = url;
+            // FIX: Do NOT set crossOrigin here for general display. 
+            // It will be handled best-effort by html2canvas on export.
+            
+            img.onerror = function() {
+                this.src = 'https://placehold.co/150?text=Image+Error';
+            };
+            
+            el.appendChild(img);
+            
+            document.getElementById('styleBoard').appendChild(el);
+            selectItem(el);
+        }
+
+        // Interact.js Setup
+        interact('.draggable-item')
+            .draggable({
+                listeners: { move: dragMoveListener },
+                modifiers: [ interact.modifiers.restrictRect({ restriction: 'parent', endOnly: true }) ]
+            })
+            .resizable({
+                edges: { left: true, right: true, bottom: true, top: true },
+                listeners: { move: resizeMoveListener },
+                modifiers: [ interact.modifiers.aspectRatio({ ratio: 'preserve' }) ]
+            })
+            .on('tap', function (event) {
+                selectItem(event.currentTarget);
+                event.preventDefault();
+            });
+
+        function dragMoveListener (event) {
+            const target = event.target;
+            const x = (parseFloat(target.getAttribute('data-x')) || 0) + event.dx;
+            const y = (parseFloat(target.getAttribute('data-y')) || 0) + event.dy;
+
+            target.style.transform = `translate(${x}px, ${y}px)`;
+            target.setAttribute('data-x', x);
+            target.setAttribute('data-y', y);
+            selectItem(target);
+        }
+
+        function resizeMoveListener (event) {
+            const target = event.target;
+            const x = (parseFloat(target.getAttribute('data-x')) || 0);
+            const y = (parseFloat(target.getAttribute('data-y')) || 0);
+
+            target.style.width = event.rect.width + 'px';
+            target.style.height = event.rect.height + 'px';
+
+            const newX = x + event.deltaRect.left;
+            const newY = y + event.deltaRect.top;
+
+            target.style.transform = `translate(${newX}px, ${newY}px)`;
+            target.setAttribute('data-x', newX);
+            target.setAttribute('data-y', newY);
+        }
+
+        // --- 5. CONTROLS ---
+        function selectItem(el) {
+            // Deactivate others
+            document.querySelectorAll('.draggable-item').forEach(i => i.classList.remove('active'));
+            
+            activeItem = el;
+            activeItem.classList.add('active');
+            
+            // Enable controls
+            document.getElementById('activeControls').style.opacity = '1';
+            document.getElementById('activeControls').style.pointerEvents = 'auto';
+        }
+
+        function tintItem(hue, grayscale=false) {
+            if(!activeItem) return;
+            const img = activeItem.querySelector('img');
+            if(grayscale) img.style.filter = 'grayscale(100%) brightness(0.7)';
+            else if(hue === 0) img.style.filter = 'none';
+            else img.style.filter = `sepia(1) hue-rotate(${hue}deg) saturate(2)`;
+        }
+
+        function changeZ(dir) {
+            if(!activeItem) return;
+            const z = parseInt(window.getComputedStyle(activeItem).zIndex);
+            activeItem.style.zIndex = dir === 'up' ? z + 1 : Math.max(1, z - 1);
+        }
+
+        function deleteActiveItem() {
+            if(activeItem) {
+                activeItem.remove();
+                activeItem = null;
+                document.getElementById('activeControls').style.opacity = '0.5';
+                document.getElementById('activeControls').style.pointerEvents = 'none';
+            }
+        }
+
+        function downloadLook() {
+            if(activeItem) activeItem.classList.remove('active');
+            
+            // Attempt to capture with CORS support. If image servers block it, it will fail or skip images.
+            html2canvas(document.getElementById('styleBoard'), { useCORS: true, logging: false }).then(canvas => {
+                try {
+                    const link = document.createElement('a');
+                    link.download = 'my-style.png';
+                    link.href = canvas.toDataURL();
+                    link.click();
+                } catch(e) {
+                    alert("Export failed: One or more images have strict security settings preventing download.");
+                }
+            }).catch(err => {
+                console.error(err);
+                alert("Could not export image. Some items are protected by their hosting server.");
+            });
+        }
+    </script>
+</body>
+</html>
