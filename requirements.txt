@@ -1,22 +1,32 @@
-# General Web Framework
+#Web Framework
+
 fastapi
 uvicorn
+python-multipart
 
-# Database
+#Database
+
 sqlalchemy
 pymysql
 
-# Image Processing & Feature Extraction
+#Image Processing & Feature Extraction
+
+pandas
 Pillow
 requests
 numpy
 torch
 torchvision
 
-# Machine Learning & Clustering
+#Machine Learning & Clustering
+
 scikit-learn
 tqdm
 scipy
+openpyxl
 
-# Instagram Scraper (NEW)
-instaloader
+#Web Scraping
+
+selenium
+webdriver-manager
+beautifulsoup4

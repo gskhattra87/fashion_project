@@ -8,12 +8,14 @@ import numpy as np
 import pandas as pd
 import uvicorn
 import subprocess 
+import sys
 import random 
 from fastapi import FastAPI, UploadFile, File, HTTPException, Form, Depends, BackgroundTasks, Query
 from sqlalchemy import create_engine, text
 from fastapi.middleware.cors import CORSMiddleware 
 from fastapi.security import HTTPBasic, HTTPBasicCredentials
 from starlette.status import HTTP_401_UNAUTHORIZED 
+from fastapi.staticfiles import StaticFiles
 from sklearn.metrics.pairwise import cosine_similarity
 from feature_extractor import get_embedding
 from typing import Optional
@@ -273,7 +275,9 @@ async def update_image(
                 UPDATE {TABLE_NAME} SET 
                 hashtags = :hashtags, 
                 gender = :gender, 
-                category = :category 
+                category = :category,
+                embedding=NULL, 
+                trend_id=NULL 
                 WHERE id = :id
             """)
             result = conn.execute(query, {
@@ -382,9 +386,32 @@ def execute_script(script_name: str):
         return {"success": False, "output": "", "error": f"Error: Python executable or script '{script_name}' not found."}
 
 
+# --- NEW: ASYNC PROCESS EXECUTION (Fixes Admin Panel freeze/crash) ---
+def trigger_background_script(script_name: str):
+    """
+    Launches a Python script as a completely independent subprocess.
+    Does NOT wait for it to finish.
+    """
+    try:
+        # Popen launches the process and returns immediately.
+        # We redirect stdout/stderr to DEVNULL to detach it completely.
+        subprocess.Popen(
+            [sys.executable, script_name],
+            stdout=subprocess.DEVNULL,
+            stderr=subprocess.DEVNULL,
+            shell=False # Better security
+        )
+        return {"success": True, "message": f"{script_name} started in background. Check terminal/logs for progress."}
+    except Exception as e:
+        return {"success": False, "error": str(e)}
+
+
+
+
 @app.post("/admin/process_data")
 async def run_process_data(admin_check: bool = Depends(authenticate_admin)):
-    return execute_script("process_data.py")
+    """Admin: Triggers the feature extraction script in the background."""
+    return trigger_background_script("process_data.py")
 
 @app.post("/admin/run_trends")
 async def run_trend_detector(admin_check: bool = Depends(authenticate_admin)):
@@ -472,7 +499,9 @@ async def bulk_update_data(
             query = text(f"""
                 UPDATE {TABLE_NAME} SET 
                 gender = :new_gender, 
-                category = :new_category 
+                category = :new_category,
+                embedding = NULL,
+                trend_id = NULL 
                 WHERE hashtags LIKE :old_hashtag_pattern
             """)
             old_hashtag_pattern = f"%{old_hashtag.lower()}%"
@@ -491,6 +520,10 @@ async def bulk_update_data(
     except Exception as e:
         print(f"Bulk Update Error: {e}")
         raise HTTPException(status_code=500, detail=str(e))
+    
+
+
+
 
 @app.get("/tags/unique")
 async def get_unique_tags(admin_check: bool = Depends(authenticate_admin)):
