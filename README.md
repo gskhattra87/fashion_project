@@ -1,5 +1,5 @@
-![Frontend Screenshot](snapshot/frontend1.png)
-![Backend Screenshot](snapshot/backend.png)
+![Frontend Screenshot](./snapshot/frontend1.png)
+![Backend Screenshot](./snapshot/backend.png)
 
 👗 Fashion Trend Detection & AI Stylist System
 
